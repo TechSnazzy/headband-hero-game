@@ -21,6 +21,10 @@ import { AlertSystem } from '../ai/AlertSystem';
 import type { AIContext } from '../ai/context';
 import { EnemyManager } from '../enemies/EnemyManager';
 import { Pickups } from './Pickups';
+import { Interactions } from './Interactions';
+import { takedownFor } from '../player/Takedown';
+import type { Guard } from '../enemies/Guard';
+import type { BuiltProp } from '../world/props';
 
 export type GameState = 'title' | 'intro' | 'playing' | 'paused' | 'won' | 'lost';
 
@@ -37,6 +41,10 @@ export class Game {
   enemies!: EnemyManager;
   pickups!: Pickups;
   aiCtx!: AIContext;
+  readonly interactions = new Interactions();
+  private interactPrompt: { text: string; progress: number } | null = null;
+  /** Remaining time of the takedown animation (hero frozen). */
+  private takedownT = 0;
   world!: World;
   hero!: Hero;
   rig!: CameraRig;
@@ -84,6 +92,8 @@ export class Game {
 
   loadLevel(level: LevelDef): void {
     this.world?.dispose(this.scene);
+    if (this.hero) this.scene.remove(this.hero.model.root);
+    this.interactions.clear();
     this.noise.clear();
     this.targets.length = 0;
     this.world = new World(level, this.scene);
@@ -133,7 +143,52 @@ export class Game {
     this.enemies?.clear();
     this.enemies = new EnemyManager(this.scene, this.aiCtx);
     this.enemies.spawnLevel(level);
+    for (const g of this.enemies.guards) this.addTakedown(g);
+    for (const p of this.world.props) if (p.def.type === 'ammoCrate') this.addCrate(p);
     this.rebuildTargets();
+  }
+
+  addTakedown(g: Guard): void {
+    this.interactions.add(
+      takedownFor(g, this.noise, (hero, guard) => {
+        // Short takedown animation: hero lunges at the guard.
+        hero.frozen = true;
+        hero.facingYaw = Math.atan2(
+          -(guard.position.x - hero.position.x),
+          -(guard.position.z - hero.position.z),
+        );
+        this.takedownT = 0.55;
+        this.interactions.cooldown = TUNING.stealth.takedownCooldown;
+        this.hud.toast('Silent takedown', 1.4);
+      }),
+    );
+  }
+
+  /** Hold E to open an ammo crate (one use). */
+  private addCrate(p: BuiltProp): void {
+    let used = false;
+    const pos = p.object.position.clone();
+    const C = TUNING.crates;
+    this.interactions.add({
+      priority: 1,
+      hold: C.openHold,
+      range: 1.9,
+      position: (out) => out.copy(pos),
+      available: () => !used,
+      prompt: () => 'Open ammo crate',
+      complete: () => {
+        used = true;
+        const r = this.weapons.addAmmo('rifle', C.ammoRifle);
+        const s = this.weapons.addAmmo('pistol', C.ammoPistol);
+        const k = this.weapons.addRocks(C.rocks);
+        audio.play('pickup');
+        this.hud.toast(`Crate: +${r} rifle  +${s} pistol  +${k} rocks`, 2.2);
+        // Pop the lid off.
+        const lid = p.object.children[0];
+        if (lid) lid.scale.y = 0.75;
+        this.fx.dust(pos.clone().setY(pos.y + 0.9), 5, 0xa07a48);
+      },
+    });
   }
 
   /** Bullets can hit enemies; allies are listed too so the friendly indicator works. */
@@ -243,8 +298,8 @@ export class Game {
     };
     const hero = this.hero;
     const fireInput = {
-      fireDown: input.locked && input.fireDown,
-      firePressed: input.locked && input.firePressed,
+      fireDown: input.locked && input.fireDown && !hero.frozen,
+      firePressed: input.locked && input.firePressed && !hero.frozen,
       reload: input.wasPressed('reload') || input.rightPressed,
       slot: input.wasPressed('slot1')
         ? 0
@@ -256,6 +311,15 @@ export class Game {
       wheel: input.wheel,
     };
     this.rebuildTargets();
+    if (this.takedownT > 0) {
+      this.takedownT -= dt;
+      hero.lean = 0.35 * Math.sin(Math.min(1, 1 - this.takedownT / 0.55) * Math.PI);
+      if (this.takedownT <= 0) {
+        hero.frozen = false;
+        hero.lean = 0;
+      }
+    }
+    this.interactPrompt = this.interactions.update(dt, hero, input.isDown('interact'));
     this.weapons.update(dt, fireInput, hero.crouching, hero.speed > 0.5, hero.sprinting);
     hero.aiming = this.weapons.aiming;
     hero.update(dt, intent, this.rig.yaw);
@@ -310,7 +374,7 @@ export class Game {
       objective: this.level.objectives.reachCamp,
       hidden: this.hero.hidden,
       crouching: this.hero.crouching,
-      interact: null,
+      interact: this.interactPrompt,
       ammoLow: !!gun && gun.reserve + gun.mag < TUNING.weapons[kind].magazine,
     });
   }

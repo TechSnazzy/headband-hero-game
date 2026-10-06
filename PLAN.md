@@ -32,7 +32,7 @@ Live: https://techsnazzy.github.io/headband-hero-game/
 - [x] **M2** Helicopter intro: fly in over the misty ridge, drop the hero at the landing zone, fly away.
 - [x] **M3** Shooting: art-matched rifle, crosshair, full auto, reload, recoil, tracers, shells, hit feedback.
 - [x] **M4** Enemies: grunts, sniper, guard dog, vision cones, health, cartoon elimination, alert system, enemy fire.
-- [ ] **M5** Stealth kit: crouch, tall grass and bushes, suppressed pistol, rocks, silent takedowns.
+- [x] **M5** Stealth kit: crouch, tall grass and bushes, suppressed pistol, rocks, silent takedowns.
 - [ ] **M6** Captives in cages, hold E to free, allies follow.
 - [ ] **M7** Extraction helicopter, hold-out countdown, win and lose flow, checkpoints.
 - [ ] **M8** HUD polish, title/pause/controls menus, audio, generated art and SFX, polish pass.

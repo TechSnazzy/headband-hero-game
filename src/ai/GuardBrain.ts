@@ -102,7 +102,12 @@ export class GuardBrain {
       if (hero.crouching) vis *= S.crouchVisibility;
       if (hero.sprinting) vis *= S.sprintVisibility;
     }
-    if (near && !hero.hidden) vis *= 1.6;
+    if (near && !hero.hidden) {
+      // Peripheral sense: strong in front, weak behind, nothing for a crouched hero behind.
+      if (inCone) vis *= 1.6;
+      else if (hero.crouching) return;
+      else vis *= hero.sprinting ? 1 : 0.45;
+    }
     const rate = lerp(A.detectRateNear, A.detectRateFar, d / range) * vis;
     if (this.state === 'alerted') {
       // Already hunting: anything but deep cover keeps them locked on.

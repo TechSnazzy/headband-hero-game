@@ -48,6 +48,8 @@ export class Guard implements Targetable {
   aimPitch = 0;
   aiming = false;
   silentlyEliminated = false;
+  /** Seconds the guard is held in a takedown grab (brain paused). */
+  grabbed = 0;
   private anim: AnimInput = defaultAnim();
   private elimT = -1;
   private lastPos = new THREE.Vector3();
@@ -287,7 +289,10 @@ export class Guard implements Targetable {
 
   update(dt: number): void {
     if (this.gone) return;
-    if (this.alive) this.brain.update(dt);
+    if (this.grabbed > 0) {
+      this.grabbed -= dt;
+      this.speed = 0;
+    } else if (this.alive) this.brain.update(dt);
     this.flinch = Math.max(0, this.flinch - dt);
 
     const root = this.model.root;

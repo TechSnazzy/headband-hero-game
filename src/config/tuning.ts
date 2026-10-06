@@ -48,7 +48,7 @@ export const TUNING = {
     // Radius (m) in which guards hear each action.
     walk: 6,
     sprint: 15,
-    crouch: 1.8,
+    crouch: 1.2,
     jumpLand: 9,
     rifleShot: 55,
     pistolShot: 9,
