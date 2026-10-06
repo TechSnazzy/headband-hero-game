@@ -127,6 +127,8 @@ export interface LevelDef {
     exit: [number, number, number];
   };
   extraction: { x: number; z: number; r: number };
+  /** Where reinforcements appear during the extraction hold-out. */
+  reinforcements: Vec2[];
   props: PropDef[];
   guards: GuardDef[];
   captives: CaptiveDef[];

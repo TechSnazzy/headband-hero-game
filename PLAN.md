@@ -34,7 +34,7 @@ Live: https://techsnazzy.github.io/headband-hero-game/
 - [x] **M4** Enemies: grunts, sniper, guard dog, vision cones, health, cartoon elimination, alert system, enemy fire.
 - [x] **M5** Stealth kit: crouch, tall grass and bushes, suppressed pistol, rocks, silent takedowns.
 - [x] **M6** Captives in cages, hold E to free, allies follow.
-- [ ] **M7** Extraction helicopter, hold-out countdown, win and lose flow, checkpoints.
+- [x] **M7** Extraction helicopter, hold-out countdown, win and lose flow, checkpoints.
 - [ ] **M8** HUD polish, title/pause/controls menus, audio, generated art and SFX, polish pass.
 - [ ] **M9** Final deploy check, link on seantechguy.com games menu.
 

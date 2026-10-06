@@ -17,6 +17,7 @@ import {
 import { audio } from '../audio/Audio';
 import { DEG, clamp } from '../world/noise';
 import { PALETTE } from '../config/palette';
+import { settings } from '../config/settings';
 
 export type WeaponKind = 'rifle' | 'pistol' | 'rocks';
 export const SLOTS: WeaponKind[] = ['rifle', 'pistol', 'rocks'];
@@ -80,6 +81,8 @@ export class WeaponSystem {
   private backRifle: THREE.Object3D;
   private tmpO = new THREE.Vector3();
   private tmpD = new THREE.Vector3();
+  /** Shot statistics for the end screen. */
+  readonly stats = { shots: 0, hits: 0, headshots: 0, rocks: 0 };
   /** Current aim point under the crosshair (world). */
   readonly aimPoint = new THREE.Vector3();
 
@@ -245,7 +248,7 @@ export class WeaponSystem {
     const target = this.aimPoint.clone();
     // Aim assist: bend toward the nearest enemy near the crosshair.
     const A = TUNING.aimAssist;
-    if (A.enabled) {
+    if (A.enabled && settings.aimAssist) {
       const o = new THREE.Vector3();
       const cd = new THREE.Vector3();
       this.d.rig.aimRay(o, cd);
@@ -316,6 +319,7 @@ export class WeaponSystem {
     this.sinceFire = 0;
     this.d.hero.aiming = true;
     g.mag--;
+    this.stats.shots++;
     this.cooldown = def.fireInterval;
     const hero = this.d.hero;
     hero.model.root.updateMatrixWorld(true);
@@ -349,6 +353,8 @@ export class WeaponSystem {
       th.target.onHit(dmg, th.part, th.point, dir, !loud);
       fx.hitSpark(th.point, dir, head);
       const killed = wasAlive && !th.target.alive;
+      this.stats.hits++;
+      if (head) this.stats.headshots++;
       this.d.onHitMarker(killed ? 'kill' : head ? 'head' : 'body');
       audio.play(killed ? 'eliminate' : head ? 'headshot' : 'hit', { volume: 0.6 });
     } else if (wh) {
@@ -382,6 +388,7 @@ export class WeaponSystem {
     if (!this.thrown && this.throwTime > T * 0.6) {
       this.thrown = true;
       this.rocks--;
+      this.stats.rocks++;
       this.spawnRock();
       audio.play('throw');
       if (this.rocks <= 0) hero.model.handR.clear();

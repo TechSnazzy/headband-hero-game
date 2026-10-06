@@ -202,6 +202,11 @@ export const LEVEL_1: LevelDef = {
     exit: [-70, 34, 30],
   },
   extraction: { x: -40, z: -78, r: 6 },
+  reinforcements: [
+    [-6, -62],
+    [6, -40],
+    [-24, -40],
+  ],
   props: [...campProps(), ...trailProps()],
   guards: [
     // 0: trail patrol in the jungle.

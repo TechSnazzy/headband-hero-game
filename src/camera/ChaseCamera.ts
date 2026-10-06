@@ -3,6 +3,7 @@ import type { CameraContext, CameraMode } from './CameraMode';
 import { TUNING } from '../config/tuning';
 import { clamp, damp, DEG } from '../world/noise';
 import { rayBox, type Collider } from '../world/Physics';
+import { settings } from '../config/settings';
 
 const C = TUNING.camera;
 
@@ -39,8 +40,10 @@ export class ChaseCamera implements CameraMode {
   }
 
   look(dx: number, dy: number): void {
-    this.yaw -= dx * C.sensitivity;
-    this.orbit = clamp(this.orbit + dy * C.sensitivity, C.minPitchDeg * DEG, C.maxPitchDeg * DEG);
+    const sens = C.sensitivity * settings.sensitivity;
+    this.yaw -= dx * sens;
+    const dyS = settings.invertY ? -dy : dy;
+    this.orbit = clamp(this.orbit + dyS * sens, C.minPitchDeg * DEG, C.maxPitchDeg * DEG);
   }
 
   addRecoil(pitch: number, yaw: number): void {

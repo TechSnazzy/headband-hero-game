@@ -106,6 +106,11 @@ export class Audio {
     if (this.master) this.master.gain.value = this.muted ? 0 : v;
   }
 
+  setMusicVolume(v: number): void {
+    this.musicVolume = v;
+    if (this.musicGain) this.musicGain.gain.value = v;
+  }
+
   setMuted(m: boolean): void {
     this.muted = m;
     if (this.master) this.master.gain.value = m ? 0 : this.volume;

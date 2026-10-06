@@ -578,3 +578,35 @@
     font-size: 36px;
   }
 }
+
+/* Objective waypoint */
+.hud-waypoint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  margin: -12px 0 0 -30px;
+  width: 60px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--hud-yellow);
+}
+.hud-waypoint.on {
+  display: flex;
+}
+.hud-waypoint i {
+  width: 14px;
+  height: 14px;
+  background: var(--hud-yellow);
+  border: 2px solid #3a2a08;
+  transform: rotate(45deg);
+  box-shadow: 0 0 6px rgba(255, 210, 62, 0.8);
+}
+.hud-waypoint span {
+  margin-top: 4px;
+}
+.hud-waypoint.edge {
+  opacity: 0.8;
+}

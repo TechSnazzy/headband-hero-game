@@ -28,6 +28,8 @@ export interface HudState {
   crouching: boolean;
   interact: { text: string; progress: number } | null;
   ammoLow: boolean;
+  /** Objective marker in screen pixels (clamped to the screen edge when off-screen). */
+  waypoint: { x: number; y: number; dist: number; behind: boolean } | null;
 }
 
 const BASE = import.meta.env.BASE_URL;
@@ -79,6 +81,7 @@ export class Hud {
         <span data-el="portraits"></span>
         <div><div class="label">RESCUED</div><div class="value" data-el="rescuedText">0 / 3</div></div>
       </div>
+      <div class="hud-waypoint" data-el="waypoint"><i></i><span data-el="waypointText"></span></div>
       <div class="hud-hint" data-el="hint"></div>
       <div class="hud-toast" data-el="toast"></div>
       <div class="hud-banner" data-el="banner"><div class="t1" data-el="bannerT1"></div><div class="t2" data-el="bannerT2"></div></div>
@@ -210,6 +213,20 @@ export class Hud {
       .querySelectorAll('img')
       .forEach((img, i) => img.classList.toggle('freed', i < s.rescued));
     if (e.objective.textContent !== s.objective) e.objective.textContent = s.objective;
+
+    // Objective waypoint.
+    if (s.waypoint) {
+      const m = 46;
+      let { x, y } = s.waypoint;
+      const off =
+        s.waypoint.behind || x < m || x > innerWidth - m || y < m + 40 || y > innerHeight - m - 70;
+      x = Math.min(innerWidth - m, Math.max(m, x));
+      y = Math.min(innerHeight - m - 70, Math.max(m + 40, y));
+      e.waypoint.style.transform = `translate(${x}px, ${y}px)`;
+      e.waypoint.classList.add('on');
+      e.waypoint.classList.toggle('edge', off);
+      e.waypointText.textContent = `${s.waypoint.dist} m`;
+    } else e.waypoint.classList.remove('on');
 
     // Interact prompt.
     if (s.interact) {
