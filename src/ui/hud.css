@@ -446,6 +446,10 @@
   border: 3px solid var(--hud-border);
   border-radius: 8px;
 }
+.hud-rescued span {
+  display: flex;
+  gap: 4px;
+}
 .hud-rescued img {
   width: 38px;
   height: 38px;

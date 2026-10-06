@@ -25,6 +25,7 @@ import { Interactions } from './Interactions';
 import { takedownFor } from '../player/Takedown';
 import type { Guard } from '../enemies/Guard';
 import type { BuiltProp } from '../world/props';
+import { Captives } from '../allies/Captives';
 
 export type GameState = 'title' | 'intro' | 'playing' | 'paused' | 'won' | 'lost';
 
@@ -42,6 +43,9 @@ export class Game {
   pickups!: Pickups;
   aiCtx!: AIContext;
   readonly interactions = new Interactions();
+  captives!: Captives;
+  /** Objective phase: reach the camp -> free captives -> extract -> hold out. */
+  phase: 'approach' | 'rescue' | 'extract' | 'holdout' | 'done' = 'approach';
   private interactPrompt: { text: string; progress: number } | null = null;
   /** Remaining time of the takedown animation (hero frozen). */
   private takedownT = 0;
@@ -145,6 +149,20 @@ export class Game {
     this.enemies.spawnLevel(level);
     for (const g of this.enemies.guards) this.addTakedown(g);
     for (const p of this.world.props) if (p.def.type === 'ammoCrate') this.addCrate(p);
+
+    this.captives?.dispose();
+    this.captives = new Captives(level, this.scene, this.world.physics, this.world.grass);
+    for (const i of this.captives.interactables()) this.interactions.add(i);
+    this.captives.onFreed = (a) => {
+      const n = this.captives.freedCount;
+      this.hud.toast(`${a.def.name} freed! (${n}/${this.captives.total})`, 2.4);
+      if (n >= this.captives.total) {
+        this.phase = 'extract';
+        this.hud.banner('ALL CAPTIVES FREED', 'Get to the chopper!');
+      } else this.phase = 'rescue';
+    };
+    this.phase = 'approach';
+    this.hud.setCaptives(level.captives.map((c) => c.kind));
     this.rebuildTargets();
   }
 
@@ -195,6 +213,35 @@ export class Game {
   private rebuildTargets(): void {
     this.targets.length = 0;
     this.targets.push(...this.enemies.targets());
+    if (this.captives) this.targets.push(...this.captives.allies);
+  }
+
+  /** Current objective text for the HUD. */
+  private objective(): string {
+    const O = this.level.objectives;
+    switch (this.phase) {
+      case 'approach':
+        return O.reachCamp;
+      case 'rescue':
+        return O.freeCaptives
+          .replace('{n}', String(this.captives.freedCount))
+          .replace('{total}', String(this.captives.total));
+      case 'extract':
+        return O.extract;
+      default:
+        return O.extract;
+    }
+  }
+
+  private updateObjectives(): void {
+    if (this.phase === 'approach') {
+      // Close enough to see the cages: switch to the rescue objective.
+      const near = this.captives.allies.some((a) => a.position.distanceTo(this.hero.position) < 30);
+      if (near) {
+        this.phase = 'rescue';
+        this.hud.toast('Find the cages and free the captives', 2.5);
+      }
+    }
   }
 
   damageHero(amount: number, _from: THREE.Vector3): void {
@@ -327,6 +374,8 @@ export class Game {
     this.enemies.update(dt);
     this.alert.update(dt, this.enemies.alertSources());
     this.pickups.update(dt, hero, this.weapons);
+    this.captives.update(dt, hero);
+    this.updateObjectives();
     this.updateHud(dt);
   }
 
@@ -369,9 +418,10 @@ export class Game {
       friendly: w.friendlyUnderCrosshair,
       alert: this.alert.level,
       alertState: this.alert.state,
-      rescued: 0,
-      totalCaptives: this.level.captives.length,
-      objective: this.level.objectives.reachCamp,
+      rescued: this.captives.freedCount,
+      freedMask: this.captives.allies.map((a) => a.state !== 'caged'),
+      totalCaptives: this.captives.total,
+      objective: this.objective(),
       hidden: this.hero.hidden,
       crouching: this.hero.crouching,
       interact: this.interactPrompt,

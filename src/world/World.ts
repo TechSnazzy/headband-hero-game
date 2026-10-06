@@ -15,7 +15,7 @@ export class World {
   private flames: THREE.Object3D[] = [];
   private lights: THREE.PointLight[] = [];
   private mist: THREE.Sprite[] = [];
-  private grass: GrassField;
+  readonly grass: GrassField;
   private time = 0;
 
   constructor(

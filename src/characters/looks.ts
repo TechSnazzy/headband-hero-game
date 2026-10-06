@@ -293,10 +293,14 @@ export function allyParts(kind: AllyLook): HumanoidParts {
         v.shell(0, 0.42, 0.02, 0.4, 0.1, 0.4, 0.07, [0x1e1612, 0x2a1e18]);
         v.shell(0, 0.22, 0.18, 0.38, 0.32, 0.06, 0.07, [0x1e1612, 0x2a1e18]);
       } else {
+        // Young soldier: messy brown hair with a white field bandage wrapped around the head.
         face(v, { brows: 0x5a4028 });
-        // Helmet.
-        v.shell(0, 0.43, 0, 0.44, 0.14, 0.44, 0.07, PALETTE.olive);
-        v.box(0, 0.37, 0, 0.46, 0.03, 0.46, PALETTE.olive[1]);
+        const hair = [0x5a3a22, 0x4a2e1a, 0x6a4428];
+        v.shell(0, 0.43, 0.01, 0.4, 0.1, 0.4, 0.07, hair);
+        v.shell(0, 0.22, 0.18, 0.38, 0.34, 0.06, 0.07, hair);
+        v.box(-0.1, 0.49, -0.08, 0.1, 0.06, 0.1, hair[0]);
+        v.box(0.08, 0.5, -0.04, 0.1, 0.07, 0.1, hair[1]);
+        v.shell(0, 0.36, 0, 0.42, 0.08, 0.42, 0.06, [0xf2efe6, 0xe4e0d4, 0xfaf8f0]);
       }
     },
     (v) => {

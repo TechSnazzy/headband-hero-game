@@ -20,6 +20,8 @@ export interface HudState {
   alert: number; // 0..1 overall camp alert
   alertState: 'calm' | 'suspicious' | 'alerted' | 'searching';
   rescued: number;
+  /** Which captives (in level order) are freed, for the portraits. */
+  freedMask: boolean[];
   totalCaptives: number;
   objective: string;
   hidden: boolean;
@@ -74,7 +76,7 @@ export class Hud {
       </div>
       <div class="hud-ammo" data-el="ammo"><span class="mag" data-el="mag">30</span><span class="sep">/</span><span class="reserve" data-el="reserve">90</span><div class="hud-ammo-label" data-el="ammoLabel">RELOAD</div></div>
       <div class="hud-rescued" data-el="rescued">
-        <img src="${BASE}ui/portrait-young.png" alt="" /><img src="${BASE}ui/portrait-medic.png" alt="" /><img src="${BASE}ui/portrait-sergeant.png" alt="" />
+        <span data-el="portraits"></span>
         <div><div class="label">RESCUED</div><div class="value" data-el="rescuedText">0 / 3</div></div>
       </div>
       <div class="hud-hint" data-el="hint"></div>
@@ -84,6 +86,13 @@ export class Hud {
     container.appendChild(r);
     this.root = r;
     r.querySelectorAll<HTMLElement>('[data-el]').forEach((e) => (this.el[e.dataset.el!] = e));
+  }
+
+  /** Portraits for the rescued panel, in level captive order. */
+  setCaptives(kinds: string[]): void {
+    this.el.portraits.innerHTML = kinds
+      .map((k) => `<img src="${BASE}ui/portrait-${k}.png" alt="" />`)
+      .join('');
   }
 
   show(v: boolean): void {
