@@ -228,7 +228,7 @@ export const LEVEL_1: LevelDef = {
     },
     { type: 'dog', patrol: [[8, 4]], handler: 1 },
     // 3: gate guard.
-    { type: 'grunt', patrol: [[2, -27]], look: [0, 0.6, -0.6] },
+    { type: 'grunt', patrol: [[2, -27]], look: [Math.PI, Math.PI + 0.6, Math.PI - 0.6] },
     // 4: camp perimeter patrol (inside the fence).
     {
       type: 'grunt',
@@ -250,8 +250,13 @@ export const LEVEL_1: LevelDef = {
       waitTime: 3,
     },
     // 6 + 7: tower snipers.
-    { type: 'sniper', patrol: [[-14, -37]], elevated: 4.6, look: [0.5, -0.4, 1.2] },
-    { type: 'sniper', patrol: [[14, -61]], elevated: 4.6, look: [Math.PI, 2.4, -2.4] },
+    {
+      type: 'sniper',
+      patrol: [[-14, -37]],
+      elevated: 4.6,
+      look: [Math.PI * 0.75, Math.PI, Math.PI / 2],
+    },
+    { type: 'sniper', patrol: [[14, -61]], elevated: 4.6, look: [-0.7, 0, -1.4] },
     // 8: tent area guard.
     {
       type: 'grunt',

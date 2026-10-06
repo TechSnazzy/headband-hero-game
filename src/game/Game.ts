@@ -17,6 +17,10 @@ import { renderWeaponIcons } from '../ui/icons';
 import { audio } from '../audio/Audio';
 import { TUNING } from '../config/tuning';
 import { DEG } from '../world/noise';
+import { AlertSystem } from '../ai/AlertSystem';
+import type { AIContext } from '../ai/context';
+import { EnemyManager } from '../enemies/EnemyManager';
+import { Pickups } from './Pickups';
 
 export type GameState = 'title' | 'intro' | 'playing' | 'paused' | 'won' | 'lost';
 
@@ -28,7 +32,11 @@ export class Game {
   readonly fx: Effects;
   readonly noise = new NoiseBus();
   readonly hud: Hud;
+  readonly alert = new AlertSystem();
   state: GameState = 'title';
+  enemies!: EnemyManager;
+  pickups!: Pickups;
+  aiCtx!: AIContext;
   world!: World;
   hero!: Hero;
   rig!: CameraRig;
@@ -101,6 +109,54 @@ export class Game {
       onHitMarker: (k) => this.hud.hitMarker(k),
     });
     this.hud.setHints(level.hints);
+
+    this.pickups?.clear();
+    this.pickups = new Pickups(this.scene, (x, z) => this.world.terrain.heightAt(x, z));
+    this.pickups.onPickup = (m) => this.hud.toast(m, 1.8);
+    for (const p of level.props) {
+      if (p.type === 'ammo' || p.type === 'medkit' || p.type === 'rockPile')
+        this.pickups.spawn(p.type, p.x, p.z);
+    }
+
+    this.alert.reset();
+    this.aiCtx = {
+      hero: this.hero,
+      physics: this.world.physics,
+      fx: this.fx,
+      noise: this.noise,
+      alert: this.alert,
+      squad: () => this.enemies.all,
+      damageHero: (amount, from) => this.damageHero(amount, from),
+      dropLoot: (pos) => this.pickups.drop(pos),
+      combatEnabled: true,
+    };
+    this.enemies?.clear();
+    this.enemies = new EnemyManager(this.scene, this.aiCtx);
+    this.enemies.spawnLevel(level);
+    this.rebuildTargets();
+  }
+
+  /** Bullets can hit enemies; allies are listed too so the friendly indicator works. */
+  private rebuildTargets(): void {
+    this.targets.length = 0;
+    this.targets.push(...this.enemies.targets());
+  }
+
+  damageHero(amount: number, _from: THREE.Vector3): void {
+    if (this.hero.dead || this.state !== 'playing') return;
+    this.hero.damage(amount);
+    this.hud.damageFlash();
+    audio.play('hurt', { volume: 0.6 });
+    if (this.hero.dead) this.onHeroDown();
+  }
+
+  private onHeroDown(): void {
+    // Placeholder until the lose screen lands (M7): respawn at the landing zone.
+    const L = this.level;
+    setTimeout(() => {
+      this.hero.spawn(L.hero.x, L.hero.z, L.hero.yaw);
+      this.rig.snap();
+    }, 1500);
   }
 
   private onClickPlay(): void {
@@ -199,10 +255,14 @@ export class Game {
             : null,
       wheel: input.wheel,
     };
+    this.rebuildTargets();
     this.weapons.update(dt, fireInput, hero.crouching, hero.speed > 0.5, hero.sprinting);
     hero.aiming = this.weapons.aiming;
     hero.update(dt, intent, this.rig.yaw);
     this.emitMovementNoise();
+    this.enemies.update(dt);
+    this.alert.update(dt, this.enemies.alertSources());
+    this.pickups.update(dt, hero, this.weapons);
     this.updateHud(dt);
   }
 
@@ -243,8 +303,8 @@ export class Game {
       reload: w.reloadProgress,
       spreadPx,
       friendly: w.friendlyUnderCrosshair,
-      alert: 0,
-      alertState: 'calm',
+      alert: this.alert.level,
+      alertState: this.alert.state,
       rescued: 0,
       totalCaptives: this.level.captives.length,
       objective: this.level.objectives.reachCamp,

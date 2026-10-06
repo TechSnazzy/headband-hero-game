@@ -130,3 +130,26 @@ export function buildRock(scale = 1): THREE.Mesh {
   v.box(-s * 0.5, -s * 0.2, s * 0.5, s, s, s, PALETTE.stone[1]);
   return v.mesh();
 }
+
+/** Sniper's long rifle: enemy wood and metal, scope, ghillie wraps. */
+export function buildSniperRifle(): THREE.Mesh {
+  const v = new VoxelBuilder(51);
+  const m = PALETTE.enemyMetal;
+  v.shell(0, -0.01, 0.3, 0.05, 0.09, 0.26, 0.026, PALETTE.enemyWood);
+  v.shell(0, 0.03, 0.02, 0.06, 0.08, 0.3, 0.026, m);
+  v.box(0, -0.07, 0.1, 0.045, 0.08, 0.045, PALETTE.enemyWood[1]);
+  v.box(0, -0.05, -0.04, 0.04, 0.07, 0.06, 0x1b1c1e);
+  v.shell(0, 0.02, -0.28, 0.055, 0.06, 0.3, 0.026, PALETTE.enemyWood);
+  v.box(0, 0.035, -0.6, 0.026, 0.026, 0.5, m[1]);
+  v.box(0, 0.035, -0.86, 0.04, 0.04, 0.06, m[0]);
+  // Scope.
+  v.box(0, 0.11, 0.0, 0.045, 0.045, 0.28, 0x1a1a1a);
+  v.box(0, 0.11, -0.15, 0.055, 0.055, 0.04, 0x1a1a1a);
+  v.box(0, 0.11, 0.15, 0.055, 0.055, 0.04, 0x1a1a1a);
+  v.box(0, 0.075, 0.0, 0.02, 0.03, 0.04, m[0]);
+  // Ghillie wraps and a rust band.
+  v.box(0, 0.035, -0.45, 0.05, 0.05, 0.05, PALETTE.ghillie[0]);
+  v.box(0, 0.035, -0.7, 0.05, 0.05, 0.05, PALETTE.ghillie[2]);
+  v.box(0, 0.02, -0.2, 0.065, 0.07, 0.02, PALETTE.rust[0]);
+  return v.mesh();
+}
