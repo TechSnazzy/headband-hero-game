@@ -1,3 +1,4 @@
+import { BASE_URL as BASE } from '../assets/loader';
 import './hud.css';
 
 /**
@@ -31,8 +32,6 @@ export interface HudState {
   /** Objective marker in screen pixels (clamped to the screen edge when off-screen). */
   waypoint: { x: number; y: number; dist: number; behind: boolean } | null;
 }
-
-const BASE = import.meta.env.BASE_URL;
 
 export class Hud {
   readonly root: HTMLDivElement;

@@ -43,3 +43,18 @@ Generated with Higgsfield `gpt_image_2_5` (images) and Higgsfield audio models, 
 
 | File | Job ID | Prompt | Used in |
 | --- | --- | --- | --- |
+| `assets/ui/key-art_41ceabbe-7516-4259-a7f5-11a9e31914c1.jpg` (runtime copy `public/ui/key-art.jpg`) | `41ceabbe-7516-4259-a7f5-11a9e31914c1` | Title key art: voxel hero crouching on a misty ridge over the enemy camp, left third kept dark for menu text. References: hero `f4a1e1f9`, chase mockup `15253482`. | Title screen background |
+| `assets/ui/logo_02cd53f4-5758-4103-b5b6-a6bc6f250673_nobg_459b0d06-b8c7-4830-ad6f-e6d889f94c59.png` (runtime `public/ui/logo.png`) | `02cd53f4-5758-4103-b5b6-a6bc6f250673`, background removed by job `459b0d06-b8c7-4830-ad6f-e6d889f94c59` | "HEADBAND HERO" chunky voxel gold letters wrapped by an olive cloth headband, on flat black (then cut out). | Title screen logo |
+| `assets/ui/thumbnail_53cbbbda-b72b-450b-9c33-99462f989278.jpg` (runtime `public/ui/thumbnail.jpg`, `public/og-image.jpg`) | `53cbbbda-b72b-450b-9c33-99462f989278` | Heroic 3/4 shot of the voxel hero with rifle low across the hips in tall grass, chopper behind. Reference: hero `f4a1e1f9`. | Website games-menu thumbnail, social share image |
+
+### Derived images (no new generation)
+
+| File | Source | Used in |
+| --- | --- | --- |
+| `public/ui/portrait-hero.png`, `public/favicon.png`, `public/apple-touch-icon.png` | Face crop of hero job `f4a1e1f9` | HUD health portrait, browser icon |
+| `public/ui/portrait-young.png` / `portrait-medic.png` / `portrait-sergeant.png` | Face crops of ally jobs `ba00e78f`, `8931c5c3`, `ea213565` | HUD rescued panel |
+| HUD hotbar weapon icons | Rendered at runtime from the in-game voxel weapon models (`src/ui/icons.ts`) | Hotbar |
+
+## Audio
+
+All sound effects and the music bed are synthesized at runtime with WebAudio (`src/audio/Audio.ts`). Higgsfield's sound-effect and music models are restricted to its own game-builder pipeline, so they were not used. The audio manager will automatically load real samples from `public/audio/<name>.mp3` if any are added later (register them with `registerSamples`).

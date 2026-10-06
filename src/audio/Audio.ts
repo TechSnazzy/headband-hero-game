@@ -322,6 +322,12 @@ export class Audio {
     gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 1.2);
     gain.connect(name === 'music' ? this.musicGain : this.sfx);
     const buf = this.buffers.get(name);
+    if (!buf && name === 'music') {
+      // Procedural music bed (see tickMusic).
+      this.musicOn = true;
+      this.musicIntensity = volume;
+      return;
+    }
     if (buf) {
       const src = ctx.createBufferSource();
       src.buffer = buf;
@@ -368,11 +374,13 @@ export class Audio {
   }
 
   setLoopVolume(name: LoopName, v: number): void {
+    if (name === 'music' && this.musicOn) this.musicIntensity = v;
     const l = this.loops.get(name);
     if (l && this.ctx) l.gain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.2);
   }
 
   stopLoop(name: LoopName): void {
+    if (name === 'music') this.musicOn = false;
     const l = this.loops.get(name);
     if (!l || !this.ctx) return;
     l.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
@@ -383,9 +391,46 @@ export class Audio {
     this.loops.delete(name);
   }
 
+  private musicOn = false;
+  private musicIntensity = 0.5;
+  private nextBeat = 0;
+  private beat = 0;
+
+  /**
+   * Tiny step sequencer: a soft pentatonic marimba line while sneaking; when the
+   * camp is alerted (intensity > 0.7) it adds a driving bass and drums.
+   */
+  private tickMusic(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicOn) return;
+    const bpm = this.musicIntensity > 0.7 ? 132 : 96;
+    const step = 60 / bpm / 2;
+    if (this.nextBeat < ctx.currentTime) this.nextBeat = ctx.currentTime + 0.05;
+    while (this.nextBeat < ctx.currentTime + 0.2) {
+      const t = this.nextBeat;
+      const b = this.beat++;
+      const out = this.musicGain;
+      const scale = [110, 130.8, 146.8, 164.8, 196, 220, 261.6];
+      const hot = this.musicIntensity > 0.7;
+      if (b % 4 === 0 || (b % 8 === 6 && Math.random() < 0.5)) {
+        const f = scale[Math.floor(Math.random() * scale.length)] * (Math.random() < 0.3 ? 2 : 1);
+        this.tone(out, t, 0.35, 0.09, 'triangle', f, f);
+      }
+      if (b % 8 === 0) this.tone(out, t, 0.9, hot ? 0.16 : 0.07, 'sine', 55, 55);
+      if (hot) {
+        if (b % 2 === 0) this.tone(out, t, 0.12, 0.28, 'sine', 120, 40); // kick
+        if (b % 4 === 2) this.noise(out, t, 0.1, 0.12, 'highpass', 1800); // snare-ish
+        this.noise(out, t, 0.03, 0.04, 'highpass', 7000); // hat
+        if (b % 2 === 1) this.tone(out, t, 0.14, 0.1, 'square', scale[b % 3] / 2, scale[b % 3] / 2);
+      } else if (b % 4 === 2) this.noise(out, t, 0.05, 0.025, 'highpass', 6000);
+      this.nextBeat += step;
+    }
+  }
+
   private chirpTimer = 2;
   /** Occasional bird chirps for the jungle ambience when no ambience sample is loaded. */
   tick(dt: number): void {
+    this.tickMusic();
     if (!this.ctx || !this.loops.has('ambience') || this.buffers.has('ambience')) return;
     this.chirpTimer -= dt;
     if (this.chirpTimer > 0) return;

@@ -474,6 +474,12 @@ export class Game {
   private frame(): void {
     const dt = Math.min(this.clock.getDelta(), 1 / 20);
     const input = this.input;
+    input.pollGamepad(dt);
+    // Gamepad Start toggles pause (keyboard Esc releases pointer lock, which pauses).
+    if (input.wasPressedCode('Pad9')) {
+      if (this.state === 'playing' || this.state === 'intro') this.pause();
+      else if (this.state === 'paused') this.resume();
+    }
 
     if (
       this.state === 'title' ||
@@ -554,7 +560,7 @@ export class Game {
       return;
     }
 
-    if (input.locked) this.rig.look(input.mouseDX, input.mouseDY);
+    if (input.active) this.rig.look(input.mouseDX, input.mouseDY);
     if (input.wasPressed('debugCamera')) this.rig.cycle();
     const intent = {
       x: (input.isDown('right') ? 1 : 0) - (input.isDown('left') ? 1 : 0),
@@ -563,7 +569,7 @@ export class Game {
       crouch: input.isDown('crouch'),
       jump: input.wasPressed('jump'),
     };
-    const canFire = input.locked && !hero.frozen;
+    const canFire = input.active && !hero.frozen;
     const fireInput = {
       fireDown: canFire && input.fireDown,
       firePressed: canFire && input.firePressed,

@@ -58,6 +58,8 @@ export class Guard implements Targetable {
   private detourTime = 0;
   private flinch = 0;
   private colors: number[];
+  /** Sniper aiming laser (telegraphs the shot). */
+  private laser: THREE.Mesh | null = null;
   /** Index in the level's guard list (used for flank angle variety). */
   readonly index: number;
 
@@ -90,6 +92,19 @@ export class Guard implements Targetable {
     const fov = TUNING.ai.visionFovDeg * DEG * (type === 'sniper' ? 0.7 : 1);
     this.cone = new VisionCone(fov);
     scene.add(this.model.root, this.cone.mesh, this.icon.sprite);
+    if (type === 'sniper') {
+      this.laser = new THREE.Mesh(
+        new THREE.BoxGeometry(0.025, 0.025, 1),
+        new THREE.MeshBasicMaterial({
+          color: 0xff2a1a,
+          transparent: true,
+          opacity: 0.7,
+          depthWrite: false,
+        }),
+      );
+      this.laser.visible = false;
+      scene.add(this.laser);
+    }
     this.brain = new GuardBrain(this, ctx);
     this.lastPos.copy(this.position);
   }
@@ -326,16 +341,36 @@ export class Guard implements Targetable {
     }
     this.model.update(dt, this.anim);
 
+    if (this.laser) {
+      const on =
+        this.alive && this.brain.state === 'alerted' && this.brain.seeing && this.ctx.combatEnabled;
+      this.laser.visible = on;
+      if (on) {
+        const a = this.muzzle(new THREE.Vector3());
+        const b = this.ctx.hero.chestPoint(new THREE.Vector3());
+        const len = a.distanceTo(b);
+        this.laser.position.copy(a).lerp(b, 0.5);
+        this.laser.scale.z = len;
+        this.laser.lookAt(b);
+        (this.laser.material as THREE.MeshBasicMaterial).opacity = 0.35 + Math.random() * 0.4;
+      }
+    }
     if (this.alive) {
-      const range = this.brain.visionRange;
+      const range = this.brain.visionRange * TUNING.ai.coneDrawFraction;
+      // Elevated lookouts project their cone onto the ground below the tower.
+      const coneOrigin = this.elevated
+        ? this.position
+            .clone()
+            .setY(this.ctx.physics.terrain.heightAt(this.position.x, this.position.z))
+        : this.position;
       this.cone.update(
         dt,
         this.ctx.physics,
-        this.position,
+        coneOrigin,
         this.yaw,
         range,
         this.brain.state,
-        this.position.y + 1.5,
+        coneOrigin.y + 1.5,
       );
       this.icon.sprite.position.copy(this.position).setY(this.position.y + 2.55);
       this.icon.set(this.brain.state, this.brain.awareness);
@@ -356,5 +391,6 @@ export class Guard implements Targetable {
 
   dispose(scene: THREE.Scene): void {
     scene.remove(this.model.root, this.cone.mesh, this.icon.sprite);
+    if (this.laser) scene.remove(this.laser);
   }
 }

@@ -75,6 +75,7 @@ export const TUNING = {
     visionRangeAlerted: 34,
     visionFovDeg: 100,
     peripheralRange: 4, // always noticed within this distance if in line of sight
+    coneDrawFraction: 0.55, // drawn cone length as a fraction of vision range (the fast-detection zone)
     detectRateNear: 1.8, // alert meter per second at point blank
     detectRateFar: 0.35, // alert meter per second at max range
     suspicionDecay: 0.18,

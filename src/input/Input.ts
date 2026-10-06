@@ -20,18 +20,18 @@ export type Action =
   | 'debugCamera';
 
 const BINDINGS: Record<Action, string[]> = {
-  forward: ['KeyW', 'ArrowUp'],
-  back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft'],
-  right: ['KeyD', 'ArrowRight'],
-  sprint: ['ShiftLeft', 'ShiftRight'],
-  crouch: ['KeyC', 'ControlLeft', 'ControlRight'],
-  jump: ['Space'],
-  interact: ['KeyE'],
-  reload: ['KeyR'],
-  slot1: ['Digit1', 'Numpad1'],
-  slot2: ['Digit2', 'Numpad2'],
-  slot3: ['Digit3', 'Numpad3'],
+  forward: ['KeyW', 'ArrowUp', 'PadUp'],
+  back: ['KeyS', 'ArrowDown', 'PadDown'],
+  left: ['KeyA', 'ArrowLeft', 'PadLeft'],
+  right: ['KeyD', 'ArrowRight', 'PadRight'],
+  sprint: ['ShiftLeft', 'ShiftRight', 'Pad10'],
+  crouch: ['KeyC', 'ControlLeft', 'ControlRight', 'Pad1'],
+  jump: ['Space', 'Pad0'],
+  interact: ['KeyE', 'Pad4', 'Pad5'],
+  reload: ['KeyR', 'Pad2'],
+  slot1: ['Digit1', 'Numpad1', 'Pad14'],
+  slot2: ['Digit2', 'Numpad2', 'Pad12'],
+  slot3: ['Digit3', 'Numpad3', 'Pad15'],
   pause: ['Escape', 'KeyP'],
   debugCamera: ['F9'],
 };
@@ -46,6 +46,10 @@ export class Input {
   firePressed = false;
   rightPressed = false;
   locked = false;
+  /** True while a gamepad has been used recently (no pointer lock needed). */
+  padActive = false;
+  private padFire = false;
+  private padY = false;
   /** Called when pointer lock is lost (used to open the pause menu). */
   onUnlock: (() => void) | null = null;
 
@@ -106,6 +110,58 @@ export class Input {
     if (document.pointerLockElement) document.exitPointerLock();
   }
 
+  /** Mouse/pad look and firing are live (pointer locked or using a gamepad). */
+  get active(): boolean {
+    return this.locked || this.padActive;
+  }
+
+  /**
+   * Polls the first connected gamepad (standard mapping) and folds it into the
+   * same action set as the keyboard. Call once per frame before reading input.
+   */
+  pollGamepad(dt: number): void {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const pad = [...pads].find((p) => p && p.connected);
+    for (const k of [...this.down]) if (k.startsWith('Pad') && !pad) this.down.delete(k);
+    if (!pad) {
+      this.padActive = false;
+      return;
+    }
+    const dead = 0.22;
+    const set = (code: string, on: boolean): void => {
+      if (on) {
+        if (!this.down.has(code)) this.pressed.add(code);
+        this.down.add(code);
+        this.padActive = true;
+      } else this.down.delete(code);
+    };
+    const [lx, ly, rx, ry] = pad.axes;
+    set('PadLeft', lx < -0.35);
+    set('PadRight', lx > 0.35);
+    set('PadUp', ly < -0.35);
+    set('PadDown', ly > 0.35);
+    pad.buttons.forEach((b, i) => {
+      if (i === 6 || i === 7 || i === 3) return;
+      set(`Pad${i}`, b.pressed);
+    });
+    // Right stick looks around (scaled to feel like mouse pixels).
+    const look = (v: number): number =>
+      Math.abs(v) < dead ? 0 : Math.sign(v) * ((Math.abs(v) - dead) / (1 - dead)) ** 1.6;
+    const lx2 = look(rx ?? 0);
+    const ly2 = look(ry ?? 0);
+    if (lx2 || ly2) this.padActive = true;
+    this.mouseDX += lx2 * 900 * dt;
+    this.mouseDY += ly2 * 600 * dt;
+    // Right trigger fires, Y cycles equipment.
+    const rt = (pad.buttons[7]?.value ?? 0) > 0.4;
+    if (rt && !this.padFire) this.firePressed = true;
+    if (rt || this.padFire) this.fireDown = rt;
+    this.padFire = rt;
+    const y = !!pad.buttons[3]?.pressed;
+    if (y && !this.padY) this.wheel += 1;
+    this.padY = y;
+  }
+
   /** Test/debug hook: press or release a key code programmatically. */
   simulate(code: string, down: boolean): void {
     if (down) {
@@ -116,6 +172,10 @@ export class Input {
 
   isDown(a: Action): boolean {
     return BINDINGS[a].some((k) => this.down.has(k));
+  }
+
+  wasPressedCode(code: string): boolean {
+    return this.pressed.has(code);
   }
 
   wasPressed(a: Action): boolean {

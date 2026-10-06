@@ -1,7 +1,6 @@
+import { BASE_URL as BASE } from '../assets/loader';
 import './menus.css';
 import { settings, saveSettings } from '../config/settings';
-
-const BASE = import.meta.env.BASE_URL;
 
 export interface MenuActions {
   play(): void;

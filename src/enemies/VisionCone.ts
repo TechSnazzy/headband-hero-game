@@ -14,6 +14,7 @@ export class VisionCone {
   private lengths = new Float32Array(RAYS + 1);
   private refresh = Math.random() * 0.2;
   private mat: THREE.MeshBasicMaterial;
+  private lineMat: THREE.LineBasicMaterial;
 
   constructor(private fov: number) {
     this.geo = new THREE.BufferGeometry();
@@ -21,7 +22,7 @@ export class VisionCone {
     this.geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     // Alpha fades from the guard toward the edge of the cone.
     const col = new Float32Array((RAYS + 2) * 4);
-    for (let i = 0; i < RAYS + 2; i++) col.set(i === 0 ? [1, 1, 1, 0.75] : [1, 1, 1, 0.08], i * 4);
+    for (let i = 0; i < RAYS + 2; i++) col.set(i === 0 ? [1, 1, 1, 0.9] : [1, 1, 1, 0.35], i * 4);
     this.geo.setAttribute('color', new THREE.BufferAttribute(col, 4));
     const idx: number[] = [];
     for (let i = 0; i < RAYS; i++) idx.push(0, i + 2, i + 1);
@@ -34,10 +35,30 @@ export class VisionCone {
       depthWrite: false,
       side: THREE.DoubleSide,
       fog: false,
+      toneMapped: false,
     });
     this.mesh = new THREE.Mesh(this.geo, this.mat);
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 2;
+    // Bright outline along the cone edge so the wedge reads against grass.
+    const lineIdx: number[] = [0, 1];
+    for (let i = 1; i <= RAYS; i++) lineIdx.push(i, i + 1);
+    lineIdx.push(RAYS + 1, 0);
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', this.geo.attributes.position);
+    lineGeo.setIndex(lineIdx);
+    this.lineMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+      fog: false,
+      toneMapped: false,
+    });
+    const outline = new THREE.LineSegments(lineGeo, this.lineMat);
+    outline.frustumCulled = false;
+    outline.renderOrder = 3;
+    this.mesh.add(outline);
   }
 
   update(
@@ -72,14 +93,11 @@ export class VisionCone {
     }
     pos.needsUpdate = true;
     this.geo.computeBoundingSphere();
-    const color =
-      state === 'alerted'
-        ? 0xff3a2a
-        : state === 'suspicious' || state === 'searching'
-          ? 0xffd23e
-          : 0xffffff;
+    // Red wedges like the concept mockup; brighter and stronger as alert rises.
+    const color = state === 'alerted' ? 0xff1e14 : state === 'unaware' ? 0xff5a3c : 0xffa424;
     this.mat.color.setHex(color);
-    this.mat.opacity = state === 'alerted' ? 0.34 : state === 'unaware' ? 0.28 : 0.34;
+    this.mat.opacity = state === 'alerted' ? 0.6 : state === 'unaware' ? 0.45 : 0.55;
+    this.lineMat.color.setHex(state === 'unaware' ? 0xffb0a0 : color);
   }
 }
 

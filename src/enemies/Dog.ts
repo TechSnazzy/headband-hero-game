@@ -234,7 +234,7 @@ export class Dog implements Targetable {
       this.ctx.physics,
       this.position,
       this.yaw,
-      this.brain.visionRange,
+      this.brain.visionRange * TUNING.ai.coneDrawFraction,
       this.brain.state,
       this.position.y + 0.9,
     );
