@@ -96,7 +96,7 @@ export class Pickups {
       p.mesh.rotation.y += dt * 1.2;
       const d = Math.hypot(hero.position.x - p.base.x, hero.position.z - p.base.z);
       if (d > 1.1 || hero.dead || Math.abs(hero.position.y - p.base.y) > 1.5) continue;
-      let msg = '';
+      let msg: string;
       if (p.kind === 'ammo') {
         const r = weapons.addAmmo('rifle', p.rifle);
         const s = weapons.addAmmo('pistol', p.pistol);
