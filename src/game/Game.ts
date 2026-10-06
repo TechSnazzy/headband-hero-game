@@ -7,6 +7,8 @@ import { Hero } from '../player/Hero';
 import type { LevelDef } from '../levels/types';
 import { LEVEL_1 } from '../levels/level1';
 import { buildRifle } from '../weapons/models';
+import { CinematicCamera } from '../camera/CinematicCamera';
+import { Intro } from './Intro';
 
 export type GameState = 'title' | 'intro' | 'playing' | 'paused' | 'won' | 'lost';
 
@@ -23,6 +25,8 @@ export class Game {
   private clock = new THREE.Clock();
   private overlay: HTMLDivElement;
   private camTarget = { position: new THREE.Vector3(), height: 1.9, facingYaw: 0 };
+  private cinematic = new CinematicCamera();
+  intro: Intro | null = null;
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({
@@ -43,12 +47,14 @@ export class Game {
     this.overlay.className = 'click-overlay';
     this.overlay.textContent = 'Click to play';
     container.appendChild(this.overlay);
-    this.overlay.addEventListener('click', () => this.input.requestLock());
-    this.renderer.domElement.addEventListener('click', () => this.input.requestLock());
+    this.overlay.addEventListener('click', () => this.onClickPlay());
+    this.renderer.domElement.addEventListener('click', () => {
+      if (this.state === 'intro') this.intro?.skip();
+      this.input.requestLock();
+    });
 
     addEventListener('resize', () => this.resize());
     this.loadLevel(this.level);
-    this.state = 'playing';
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
@@ -63,7 +69,32 @@ export class Game {
     this.camTarget.position = this.hero.position;
     this.rig = new CameraRig(this.world.physics, this.camTarget);
     this.rig.register(new ChaseCamera());
+    this.rig.register(this.cinematic);
     this.rig.setMode('chase');
+  }
+
+  private onClickPlay(): void {
+    this.input.requestLock();
+    if (this.state === 'title') this.startIntro();
+  }
+
+  /** Helicopter insertion cutscene. */
+  startIntro(): void {
+    this.intro?.dispose();
+    const L = this.level;
+    this.hero.spawn(L.hero.x, L.hero.z, L.hero.yaw);
+    this.intro = new Intro(L, this.scene, this.hero, this.cinematic, this.world.terrain);
+    this.rig.setMode('cinematic');
+    this.rig.snap();
+    this.state = 'intro';
+  }
+
+  private endIntroControl(): void {
+    this.rig.setMode('chase');
+    const chase = this.rig.mode as ChaseCamera;
+    chase.yaw = this.hero.facingYaw;
+    this.rig.snap();
+    this.state = 'playing';
   }
 
   private resize(): void {
@@ -74,7 +105,17 @@ export class Game {
   private frame(): void {
     const dt = Math.min(this.clock.getDelta(), 1 / 20);
     const input = this.input;
-    this.overlay.style.display = input.locked ? 'none' : 'flex';
+    this.overlay.style.display = input.locked || this.state === 'intro' ? 'none' : 'flex';
+
+    if (this.intro) {
+      this.intro.update(dt);
+      if (this.state === 'intro') {
+        if (input.wasPressed('jump') || input.firePressed) this.intro.skip();
+        this.hero.updateScripted(dt);
+        if (this.intro.controlGiven) this.endIntroControl();
+      }
+      if (this.intro.finished) this.intro = null;
+    }
 
     if (this.state === 'playing') {
       if (input.locked) this.rig.look(input.mouseDX, input.mouseDY);

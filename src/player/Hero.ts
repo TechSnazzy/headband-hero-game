@@ -180,6 +180,16 @@ export class Hero {
       }
     }
 
+    this.animate(dt);
+  }
+
+  /** Scripted movement (cutscenes): position is set externally, only animate. */
+  updateScripted(dt: number): void {
+    this.velocity.set(0, 0, 0);
+    this.animate(dt);
+  }
+
+  private animate(dt: number): void {
     this.syncModel();
     this.anim.speed = this.speed;
     this.anim.crouch = this.crouching ? 1 : 0;

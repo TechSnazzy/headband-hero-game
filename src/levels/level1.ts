@@ -141,7 +141,7 @@ export const LEVEL_1: LevelDef = {
   seed: 1337,
   size: { w: 128, d: 192 },
   mood: {
-    skyTop: 0x5f9fd6,
+    skyTop: 0x86b9e2,
     skyHorizon: 0xcfe3e8,
     fog: 0xbcd3d4,
     fogNear: 30,
@@ -197,7 +197,7 @@ export const LEVEL_1: LevelDef = {
   },
   hero: { x: 0, z: 79, yaw: 0 },
   intro: {
-    from: [40, 26, 150],
+    from: [-30, 24, 128],
     drop: [0, 4.5 + 7, 80],
     exit: [-70, 34, 30],
   },
