@@ -13,3 +13,17 @@ body {
 #app canvas {
   display: block;
 }
+.click-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  text-shadow: 0 2px 0 #000;
+}

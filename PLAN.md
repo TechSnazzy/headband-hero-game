@@ -27,8 +27,8 @@ Live: https://techsnazzy.github.io/headband-hero-game/
 
 ## Milestones
 
-- [ ] **M0** Repo scaffold, README, .gitignore, tooling (ESLint, Prettier, EditorConfig), CI deploy, first push, Pages enabled.
-- [ ] **M1** Hero walking on voxel terrain, pointer-lock mouse look, swappable chase camera with wall/tree avoidance.
+- [x] **M0** Repo scaffold, README, .gitignore, tooling (ESLint, Prettier, EditorConfig), CI deploy, first push, Pages enabled.
+- [x] **M1** Hero walking on voxel terrain, pointer-lock mouse look, swappable chase camera with wall/tree avoidance.
 - [ ] **M2** Helicopter intro: fly in over the misty ridge, drop the hero at the landing zone, fly away.
 - [ ] **M3** Shooting: art-matched rifle, crosshair, full auto, reload, recoil, tracers, shells, hit feedback.
 - [ ] **M4** Enemies: grunts, sniper, guard dog, vision cones, health, cartoon elimination, alert system, enemy fire.

@@ -1,0 +1,79 @@
+/** Colors for the procedural voxel models and world, sampled from the concept art. */
+export const PALETTE = {
+  skin: [0xe39a63, 0xd88c56, 0xeaa771],
+  skinShade: 0xb8703f,
+  hair: [0x2a1f19, 0x34261d, 0x1f1712],
+  headband: [0x3c4426, 0x343b20, 0x454d2c],
+  tankTop: [0x4c5a2f, 0x56653a, 0x42502a, 0x5d6b40],
+  pantsCamo: [0x5a5a33, 0x4a4d2b, 0x6b5a3a, 0x3e4224, 0x7a5f3d],
+  boots: [0x2b2724, 0x332e2a],
+  belt: 0x3a2d22,
+
+  // Hero rifle (warm wood + dark metal)
+  wood: [0x8a4a24, 0x9a5630, 0x7d4120, 0xa0602f],
+  metal: [0x2d3033, 0x34383c, 0x26292c],
+  magazine: [0x1b1c1e, 0x232427],
+  sling: [0x55552c, 0x4c4c27, 0x5f5f33],
+
+  // Enemy rifle accents (charcoal + rust red)
+  enemyWood: [0x5b2c1c, 0x6a3220, 0x4e2618],
+  enemyMetal: [0x2a2a2c, 0x323234],
+  rust: [0xa23c22, 0xb8462a, 0x8c321c],
+
+  // Enemies
+  charcoal: [0x2e2e30, 0x38383a, 0x262628, 0x414143],
+  rustCamo: [0xa23c22, 0x8c321c, 0x2e2e30, 0x38383a],
+  beret: [0x9b2f1f, 0xae3a24, 0x86281a],
+  ghillie: [0x9c8452, 0x7d6a3e, 0xb39a62, 0x6b5a33, 0x8a7a4a],
+  dogFur: [0x6b4a2e, 0x5a3d25, 0x7a5636],
+  dogDark: [0x2b2420, 0x3a302a],
+
+  // Allies (olive drab, torn)
+  olive: [0x5d6b34, 0x4f5c2b, 0x6a783d, 0x56632f],
+  undershirt: [0x9c9070, 0x8a7f62],
+  medicWhite: 0xe8e4da,
+  medicCross: 0xc8392b,
+  chevron: 0xf0b62a,
+  rope: [0x9a7a4a, 0x86683d],
+
+  // World
+  grassTop: [0x5fa83a, 0x56a034, 0x67b041, 0x4e9530, 0x70b84a],
+  grassDark: [0x3f7d27, 0x47862c, 0x37721f],
+  dirt: [0x7a5233, 0x6e4a2d, 0x86603c, 0x654328],
+  path: [0x9b7148, 0x8d6640, 0xa77c52],
+  stone: [0x7c7f7a, 0x6d706b, 0x8a8d87, 0x5f625d],
+  cliff: [0x6e7166, 0x7f8276, 0x5e6158, 0x8b6f4f],
+  leaves: [0x3d8f2e, 0x47a035, 0x2f7a25, 0x55ad3e, 0x2a6b20],
+  leavesLight: [0x6cc04a, 0x7bcc55, 0x5db53f],
+  trunk: [0x6b4528, 0x5c3a21, 0x7a5030],
+  tallGrass: [0x5cb83a, 0x4ea532, 0x6ac645, 0x449628],
+  plank: [0x8b6238, 0x7a5530, 0x94693e, 0x6e4a2a],
+  plankDark: [0x5a3e24, 0x4e351e],
+  canvas: [0x5c6b3a, 0x52603a, 0x667544],
+  bannerRed: 0x9e2a22,
+  crate: [0x9a7040, 0x8a6236, 0xa67a48],
+  water: 0x3d8fb0,
+  torchFlame: [0xffb43a, 0xff8a1f, 0xffe17a],
+
+  // Helicopter (neutral, no insignia)
+  heliBody: [0x4d5a3a, 0x56643f, 0x45512f],
+  heliDark: [0x26292b, 0x303436],
+  heliGlass: 0x9fd4e8,
+
+  // FX
+  spark: [0xfff1a0, 0xffd04a, 0xffffff],
+  puff: [0xffffff, 0xe8e8e8, 0xd5d5d5],
+  tracerHero: 0xffe48a,
+  tracerEnemy: 0xff6a4a,
+};
+
+export type ColorList = readonly number[];
+
+/** Deterministic pick from a color list using a hash of integer coordinates. */
+export function pickColor(list: ColorList | number, a: number, b = 0, c = 0, seed = 0): number {
+  if (typeof list === 'number') return list;
+  let h = (a * 374761393 + b * 668265263 + c * 2147483647 + seed * 144665) | 0;
+  h = (h ^ (h >>> 13)) * 1274126177;
+  h ^= h >>> 16;
+  return list[Math.abs(h) % list.length];
+}
