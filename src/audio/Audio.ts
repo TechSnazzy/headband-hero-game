@@ -1,9 +1,14 @@
 import * as THREE from 'three';
 
 /**
- * WebAudio sound manager. Each sound tries a generated sample from
- * public/audio/<name>.mp3 first (see ASSETS.md) and falls back to a small
- * procedural synth so the game always has audio.
+ * WebAudio sound manager.
+ *
+ * Gunfire, footsteps, impacts and foley are real recordings (CC0, see ASSETS.md)
+ * in public/audio, with several variants per sound picked at random. Every
+ * positional sound goes through distance attenuation, a distance low-pass (far
+ * gunfire sounds muffled) and an outdoor convolution reverb so shots echo
+ * across the valley. Sounds without a recording (helicopter, jungle bed, dog,
+ * stingers) are synthesized.
  */
 
 export type SoundName =
@@ -32,14 +37,59 @@ export type SoundName =
   | 'switch'
   | 'win'
   | 'lose'
-  | 'bulletImpact';
+  | 'bulletImpact'
+  | 'impactWood'
+  | 'impactMetal'
+  | 'crate'
+  | 'cage'
+  | 'cloth'
+  | 'reloadPistol';
 
 export type LoopName = 'heli' | 'ambience' | 'music';
 
-/** Files present in public/audio (kept in sync with ASSETS.md). */
-const SAMPLE_FILES: Partial<Record<SoundName | LoopName, string>> = {};
+const n = (base: string, count: number): string[] =>
+  Array.from({ length: count }, (_, i) => `${base}_${i + 1}.mp3`);
 
-export function registerSamples(map: Partial<Record<SoundName | LoopName, string>>): void {
+/** Recorded variants in public/audio (kept in sync with ASSETS.md). */
+const SAMPLE_FILES: Partial<Record<SoundName | LoopName, string[]>> = {
+  rifle: n('rifle', 4),
+  enemyRifle: n('enemyRifle', 4),
+  sniper: n('sniper', 2),
+  pistol: n('pistol', 2),
+  reload: n('reload', 1),
+  reloadPistol: n('reloadPistol', 1),
+  empty: n('empty', 1),
+  footstep: n('footstep', 5),
+  bulletImpact: n('impactDirt', 4),
+  impactWood: n('impactWood', 3),
+  impactMetal: n('impactMetal', 3),
+  hit: n('hit', 3),
+  takedown: n('takedown', 2),
+  rockHit: n('rockHit', 3),
+  land: n('land', 2),
+  throw: n('throw', 1),
+  jump: n('jump', 1),
+  cloth: n('cloth', 1),
+  switch: n('switch', 1),
+  pickup: n('pickup', 2),
+  crate: n('crate', 1),
+  cage: n('cage', 1),
+};
+
+/** How much of each sound goes to the outdoor reverb (gunfire echoes, foley stays dry). */
+const REVERB_SEND: Partial<Record<SoundName, number>> = {
+  rifle: 0.55,
+  enemyRifle: 0.7,
+  sniper: 0.8,
+  pistol: 0.18,
+  bulletImpact: 0.2,
+  rockHit: 0.3,
+  bark: 0.45,
+  alert: 0.2,
+  hit: 0.1,
+};
+
+export function registerSamples(map: Partial<Record<SoundName | LoopName, string[]>>): void {
   Object.assign(SAMPLE_FILES, map);
 }
 
@@ -48,7 +98,10 @@ export class Audio {
   private master!: GainNode;
   private sfx!: GainNode;
   private musicGain!: GainNode;
-  private buffers = new Map<string, AudioBuffer>();
+  private buffers = new Map<string, AudioBuffer[]>();
+  private reverb!: ConvolverNode;
+  /** Camera yaw, so stereo panning follows where the player is looking. */
+  listenerYaw = 0;
   private noiseBuf: AudioBuffer | null = null;
   private loops = new Map<
     LoopName,
@@ -78,25 +131,69 @@ export class Audio {
     this.musicGain = this.ctx.createGain();
     this.musicGain.gain.value = this.musicVolume;
     this.musicGain.connect(this.master);
+    this.reverb = this.ctx.createConvolver();
+    this.reverb.buffer = this.makeImpulse(2.4);
+    const wet = this.ctx.createGain();
+    wet.gain.value = 0.9;
+    this.reverb.connect(wet).connect(this.master);
     const len = this.ctx.sampleRate * 1.5;
     this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     void this.loadSamples();
+    this.renderSynthLoops();
+  }
+
+  /**
+   * Outdoor impulse response: a few discrete early reflections (tree line, ridge)
+   * followed by a diffuse, darkening tail.
+   */
+  private makeImpulse(seconds: number): AudioBuffer {
+    const ctx = this.ctx!;
+    const rate = ctx.sampleRate;
+    const len = Math.floor(rate * seconds);
+    const buf = ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        const t = i / rate;
+        // Low-passed noise that gets darker as it decays.
+        const k = 0.35 + 0.6 * Math.exp(-t * 3);
+        lp += (Math.random() * 2 - 1 - lp) * k;
+        d[i] = lp * Math.exp(-t * 2.6) * 0.55;
+      }
+      // Early reflections (slightly different per ear for width).
+      for (const [ms, g] of [
+        [37, 0.5],
+        [81, 0.35],
+        [143, 0.3],
+        [260, 0.22],
+        [410, 0.16],
+      ]) {
+        const at = Math.floor(((ms + (ch ? 9 : 0)) / 1000) * rate);
+        for (let j = 0; j < 220 && at + j < len; j++)
+          d[at + j] += (Math.random() * 2 - 1) * g * Math.exp(-j / 60);
+      }
+    }
+    return buf;
   }
 
   private async loadSamples(): Promise<void> {
     const base = import.meta.env.BASE_URL;
     await Promise.all(
-      Object.entries(SAMPLE_FILES).map(async ([name, file]) => {
-        try {
-          const res = await fetch(`${base}audio/${file}`);
-          if (!res.ok) return;
-          const buf = await this.ctx!.decodeAudioData(await res.arrayBuffer());
-          this.buffers.set(name, buf);
-        } catch {
-          // Missing or undecodable sample: synth fallback is used.
+      Object.entries(SAMPLE_FILES).map(async ([name, files]) => {
+        const list: AudioBuffer[] = [];
+        for (const file of files ?? []) {
+          try {
+            const res = await fetch(`${base}audio/${file}`);
+            if (!res.ok) continue;
+            list.push(await this.ctx!.decodeAudioData(await res.arrayBuffer()));
+          } catch {
+            // Missing or undecodable sample: synth fallback is used.
+          }
         }
+        if (list.length) this.buffers.set(name, list);
       }),
     );
   }
@@ -131,27 +228,45 @@ export class Audio {
 
     let vol = opts.volume ?? 1;
     let pan = 0;
+    let dist = 0;
     if (opts.pos) {
-      const d = opts.pos.distanceTo(this.listener);
+      dist = opts.pos.distanceTo(this.listener);
       const maxD = opts.maxDist ?? 60;
-      if (d > maxD) return;
-      vol *= Math.max(0, 1 - d / maxD) ** 1.5;
-      pan = Math.max(-1, Math.min(1, (opts.pos.x - this.listener.x) / 20));
+      if (dist > maxD) return;
+      // Inverse-distance with a soft edge at maxDist.
+      vol *= (1 / (1 + dist * 0.08)) * Math.min(1, (maxD - dist) / (maxD * 0.25));
+      // Pan relative to where the camera faces.
+      const dx = opts.pos.x - this.listener.x;
+      const dz = opts.pos.z - this.listener.z;
+      const rel = Math.atan2(-dx, -dz) - this.listenerYaw;
+      pan = -Math.sin(rel) * Math.min(1, dist / 4);
     }
-    if (vol < 0.01) return;
+    if (vol < 0.005) return;
     const out = ctx.createGain();
     out.gain.value = vol;
+    // Distance low-pass: far shots lose their crack and sound muffled.
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.max(900, 18000 / (1 + dist * 0.09));
     const panner = ctx.createStereoPanner();
-    panner.pan.value = pan * 0.6;
-    out.connect(panner).connect(this.sfx);
+    panner.pan.value = pan * 0.75;
+    out.connect(lp).connect(panner).connect(this.sfx);
+    const send = (REVERB_SEND[name] ?? 0.08) * (0.6 + Math.min(1, dist / 40));
+    if (send > 0.01) {
+      const sg = ctx.createGain();
+      sg.gain.value = send;
+      panner.connect(sg).connect(this.reverb);
+    }
 
-    const buf = this.buffers.get(name);
-    if (buf) {
+    const bufs = this.buffers.get(name);
+    if (bufs) {
       const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.playbackRate.value = (opts.rate ?? 1) * (0.96 + Math.random() * 0.08);
+      src.buffer = bufs[Math.floor(Math.random() * bufs.length)];
+      src.playbackRate.value = (opts.rate ?? 1) * (0.95 + Math.random() * 0.1);
       src.connect(out);
       src.start();
+      // A little synthesized sweetener on top of some recordings.
+      if (name === 'hit') this.tone(out, ctx.currentTime, 0.05, 0.12, 'triangle', 1900, 2300);
       return;
     }
     this.synth(name, out, opts.rate ?? 1);
@@ -240,10 +355,10 @@ export class Audio {
         this.tone(out, t + 0.06, 0.1, 0.35, 'square', 2400, 3000);
         break;
       case 'eliminate':
-        // Cartoon "pop" + sparkle.
-        this.tone(out, t, 0.12, 0.6, 'sine', 300, 900);
-        this.noise(out, t, 0.25, 0.35, 'highpass', 2000);
-        this.tone(out, t + 0.08, 0.15, 0.25, 'triangle', 1400, 2200);
+        // Body hitting the ground, then the soft "poof" of voxel cubes.
+        this.tone(out, t, 0.18, 0.5, 'sine', 90, 45);
+        this.noise(out, t, 0.12, 0.45, 'lowpass', 500);
+        this.noise(out, t + 0.05, 0.45, 0.18, 'bandpass', 1400, 0.7);
         break;
       case 'alert':
         this.tone(out, t, 0.12, 0.5, 'sawtooth', 600, 900);
@@ -284,12 +399,18 @@ export class Audio {
         this.tone(out, t + 0.24, 0.25, 0.35, 'triangle', 784, 784);
         break;
       case 'hurt':
-        this.tone(out, t, 0.12, 0.4, 'sawtooth', 220, 110);
+        // Short pained grunt: voiced buzz through a vowel-like formant + breath.
+        this.voice(out, t, 0.2, 150, 105, [600, 1100], 0.5);
+        this.noise(out, t, 0.12, 0.08, 'bandpass', 1800, 1);
         break;
-      case 'bark':
-        this.tone(out, t, 0.08, 0.5, 'sawtooth', 500, 260);
-        this.tone(out, t + 0.16, 0.08, 0.5, 'sawtooth', 520, 270);
+      case 'bark': {
+        // Two "woofs": a voiced burst with mouth formants and a breathy edge.
+        for (const dt of [0, 0.22]) {
+          this.voice(out, t + dt, 0.13, 420, 240, [700, 1350, 2600], 0.9);
+          this.noise(out, t + dt, 0.07, 0.35, 'bandpass', 1500, 1.2);
+        }
         break;
+      }
       case 'ui':
         this.tone(out, t, 0.05, 0.2, 'square', 880, 880);
         break;
@@ -317,60 +438,183 @@ export class Audio {
   startLoop(name: LoopName, volume = 0.5): void {
     const ctx = this.ctx;
     if (!ctx || this.loops.has(name)) return;
-    const gain = ctx.createGain();
-    gain.gain.value = 0;
-    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 1.2);
-    gain.connect(name === 'music' ? this.musicGain : this.sfx);
-    const buf = this.buffers.get(name);
-    if (!buf && name === 'music') {
+    if (name === 'music' && !this.buffers.has('music')) {
       // Procedural music bed (see tickMusic).
       this.musicOn = true;
       this.musicIntensity = volume;
       return;
     }
-    if (buf) {
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.loop = true;
-      src.connect(gain);
-      src.start();
-      this.loops.set(name, { src, gain });
+    const buf = this.buffers.get(name)?.[0];
+    if (!buf) {
+      // Synthesized loops are rendered offline right after unlock; start when ready.
+      this.wantedLoops.set(name, volume);
+      void this.loopsReady?.then(() => {
+        if (this.wantedLoops.has(name)) this.startLoop(name, this.wantedLoops.get(name)!);
+      });
       return;
     }
+    this.wantedLoops.delete(name);
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 1.2);
+    gain.connect(name === 'music' ? this.musicGain : this.sfx);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.connect(gain);
     if (name === 'heli') {
-      // Rotor chop: noise through a filter, amplitude-modulated.
-      const src = ctx.createBufferSource();
-      src.buffer = this.noiseBuf;
-      src.loop = true;
-      const f = ctx.createBiquadFilter();
-      f.type = 'lowpass';
-      f.frequency.value = 380;
-      const am = ctx.createGain();
-      am.gain.value = 0.5;
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 11;
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 0.5;
-      lfo.connect(lfoGain).connect(am.gain);
-      src.connect(f).connect(am).connect(gain);
-      src.start();
-      lfo.start();
-      this.loops.set(name, { src, gain });
-    } else if (name === 'ambience') {
-      // Soft jungle bed: filtered noise wind + occasional chirps handled by tick().
-      const src = ctx.createBufferSource();
-      src.buffer = this.noiseBuf;
-      src.loop = true;
-      const f = ctx.createBiquadFilter();
-      f.type = 'bandpass';
-      f.frequency.value = 900;
-      f.Q.value = 0.4;
-      const g = ctx.createGain();
-      g.gain.value = 0.12;
-      src.connect(f).connect(g).connect(gain);
-      src.start();
-      this.loops.set(name, { src, gain });
+      const sg = ctx.createGain();
+      sg.gain.value = 0.35;
+      gain.connect(sg).connect(this.reverb);
     }
+    src.start(0, Math.random() * buf.duration);
+    this.loops.set(name, { src, gain });
+  }
+
+  private wantedLoops = new Map<LoopName, number>();
+  private loopsReady: Promise<void> | null = null;
+
+  /** Renders a mono buffer offline with a small node graph. */
+  private async renderOffline(
+    seconds: number,
+    build: (c: OfflineAudioContext, noise: AudioBuffer) => void,
+  ): Promise<AudioBuffer> {
+    const rate = 44100;
+    const c = new OfflineAudioContext(1, Math.floor(seconds * rate), rate);
+    const noise = c.createBuffer(1, Math.floor(seconds * rate), rate);
+    const d = noise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    build(c, noise);
+    return c.startRendering();
+  }
+
+  /**
+   * Helicopter: rotor blade slaps (whup-whup at ~11 Hz) with a low thump each,
+   * turbine whine and a rumble bed. Jungle: cicada swell, distant insects, wind.
+   * Both are seamless loops (all modulation periods divide the loop length).
+   */
+  private renderSynthLoops(): void {
+    const heli = this.renderOffline(2, (c, noise) => {
+      const out = c.createGain();
+      out.connect(c.destination);
+      const src = (): AudioBufferSourceNode => {
+        const n = c.createBufferSource();
+        n.buffer = noise;
+        n.loop = true;
+        return n;
+      };
+      const slaps = 22;
+      for (let i = 0; i < slaps; i++) {
+        const t = (i / slaps) * 2;
+        const n = src();
+        const f = c.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 520;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(1.1, t + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.02, t + 0.075);
+        n.connect(f).connect(g).connect(out);
+        n.start(t, (i * 0.37) % 1.5, 0.09);
+        const o = c.createOscillator();
+        o.frequency.setValueAtTime(70, t);
+        o.frequency.exponentialRampToValueAtTime(38, t + 0.08);
+        const og = c.createGain();
+        og.gain.setValueAtTime(0.45, t);
+        og.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        o.connect(og).connect(out);
+        o.start(t);
+        o.stop(t + 0.1);
+      }
+      const rumble = src();
+      const rf = c.createBiquadFilter();
+      rf.type = 'lowpass';
+      rf.frequency.value = 140;
+      const rg = c.createGain();
+      rg.gain.value = 0.55;
+      rumble.connect(rf).connect(rg).connect(out);
+      rumble.start();
+      const whine = c.createOscillator();
+      whine.type = 'sawtooth';
+      whine.frequency.value = 1500;
+      const wf = c.createBiquadFilter();
+      wf.type = 'bandpass';
+      wf.frequency.value = 1500;
+      wf.Q.value = 12;
+      const wg = c.createGain();
+      wg.gain.value = 0.05;
+      whine.connect(wf).connect(wg).connect(out);
+      whine.start();
+      const hiss = src();
+      const hf = c.createBiquadFilter();
+      hf.type = 'highpass';
+      hf.frequency.value = 3500;
+      const hg = c.createGain();
+      hg.gain.value = 0.035;
+      hiss.connect(hf).connect(hg).connect(out);
+      hiss.start(0, 0.7);
+    });
+    const jungle = this.renderOffline(8, (c, noise) => {
+      const out = c.createGain();
+      out.connect(c.destination);
+      const src = (offset: number): AudioBufferSourceNode => {
+        const n = c.createBufferSource();
+        n.buffer = noise;
+        n.loop = true;
+        n.start(0, offset);
+        return n;
+      };
+      // Cicada: narrow band of noise, buzzing at 32 Hz, swelling once per loop.
+      const cic = src(0);
+      const cf = c.createBiquadFilter();
+      cf.type = 'bandpass';
+      cf.frequency.value = 5200;
+      cf.Q.value = 7;
+      const buzz = c.createGain();
+      buzz.gain.value = 0.5;
+      const lfo = c.createOscillator();
+      lfo.frequency.value = 32;
+      const lfoG = c.createGain();
+      lfoG.gain.value = 0.5;
+      lfo.connect(lfoG).connect(buzz.gain);
+      lfo.start();
+      const swell = c.createGain();
+      const curve = new Float32Array(64).map(
+        (_, i) => 0.06 + 0.16 * Math.pow(Math.sin((i / 63) * Math.PI), 2),
+      );
+      swell.gain.setValueCurveAtTime(curve, 0, 8);
+      cic.connect(cf).connect(buzz).connect(swell).connect(out);
+      // A second, lower insect layer.
+      const ins = src(2.1);
+      const inf = c.createBiquadFilter();
+      inf.type = 'bandpass';
+      inf.frequency.value = 3100;
+      inf.Q.value = 10;
+      const ing = c.createGain();
+      ing.gain.value = 0.05;
+      const lfo2 = c.createOscillator();
+      lfo2.frequency.value = 4;
+      const l2g = c.createGain();
+      l2g.gain.value = 0.045;
+      lfo2.connect(l2g).connect(ing.gain);
+      lfo2.start();
+      ins.connect(inf).connect(ing).connect(out);
+      // Wind through the canopy.
+      const wind = src(4.3);
+      const wf = c.createBiquadFilter();
+      wf.type = 'lowpass';
+      wf.frequency.value = 420;
+      const wg = c.createGain();
+      const wcurve = new Float32Array(64).map(
+        (_, i) => 0.12 + 0.1 * Math.sin((i / 63) * Math.PI * 2 + 1),
+      );
+      wg.gain.setValueCurveAtTime(wcurve, 0, 8);
+      wind.connect(wf).connect(wg).connect(out);
+    });
+    this.loopsReady = Promise.all([heli, jungle]).then(([h, j]) => {
+      this.buffers.set('heli', [h]);
+      this.buffers.set('ambience', [j]);
+    });
   }
 
   setLoopVolume(name: LoopName, v: number): void {
@@ -381,6 +625,7 @@ export class Audio {
 
   stopLoop(name: LoopName): void {
     if (name === 'music') this.musicOn = false;
+    this.wantedLoops.delete(name);
     const l = this.loops.get(name);
     if (!l || !this.ctx) return;
     l.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
@@ -428,20 +673,91 @@ export class Audio {
   }
 
   private chirpTimer = 2;
-  /** Occasional bird chirps for the jungle ambience when no ambience sample is loaded. */
+  /** Voiced sound: sawtooth with a pitch glide through parallel formant filters. */
+  private voice(
+    dest: AudioNode,
+    t0: number,
+    dur: number,
+    f0: number,
+    f1: number,
+    formants: number[],
+    gain: number,
+  ): void {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0, t0);
+    o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    for (const [i, f] of formants.entries()) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = 5;
+      const fg = ctx.createGain();
+      fg.gain.value = 1 / (i + 1);
+      o.connect(bp).connect(fg).connect(g);
+    }
+    g.connect(dest);
+    o.start(t0);
+    o.stop(t0 + dur + 0.05);
+  }
+
+  /** Jungle birds on top of the ambience loop: varied FM calls, positioned around you. */
   tick(dt: number): void {
     this.tickMusic();
-    if (!this.ctx || !this.loops.has('ambience') || this.buffers.has('ambience')) return;
+    if (!this.ctx || !this.loops.has('ambience')) return;
     this.chirpTimer -= dt;
     if (this.chirpTimer > 0) return;
-    this.chirpTimer = 1.5 + Math.random() * 4;
-    const g = this.ctx.createGain();
-    g.gain.value = 0.05 + Math.random() * 0.05;
-    g.connect(this.sfx);
-    const f = 1800 + Math.random() * 1500;
-    const t = this.ctx.currentTime;
-    for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++)
-      this.tone(g, t + i * 0.11, 0.08, 1, 'sine', f, f * 1.3);
+    this.chirpTimer = 0.8 + Math.random() * 3;
+    const ctx = this.ctx;
+    const g = ctx.createGain();
+    g.gain.value = 0.025 + Math.random() * 0.035;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    g.connect(pan).connect(this.sfx);
+    const sg = ctx.createGain();
+    sg.gain.value = 0.6;
+    pan.connect(sg).connect(this.reverb);
+    const t = ctx.currentTime;
+    const kind = Math.floor(Math.random() * 3);
+    const f = 1600 + Math.random() * 2200;
+    if (kind === 0) {
+      // Quick descending trill.
+      for (let i = 0; i < 4 + Math.floor(Math.random() * 4); i++)
+        this.fmChirp(g, t + i * 0.07, 0.06, f * (1 - i * 0.04), f * 0.85);
+    } else if (kind === 1) {
+      // Two-note whistle.
+      this.fmChirp(g, t, 0.22, f, f * 1.05);
+      this.fmChirp(g, t + 0.3, 0.3, f * 0.8, f * 0.75);
+    } else {
+      // Rising "whoop" call.
+      this.fmChirp(g, t, 0.35, f * 0.5, f * 1.1);
+    }
+  }
+
+  private fmChirp(dest: AudioNode, t0: number, dur: number, f0: number, f1: number): void {
+    const ctx = this.ctx!;
+    const car = ctx.createOscillator();
+    car.frequency.setValueAtTime(f0, t0);
+    car.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    const mod = ctx.createOscillator();
+    mod.frequency.value = 35 + Math.random() * 40;
+    const mg = ctx.createGain();
+    mg.gain.value = f0 * 0.06;
+    mod.connect(mg).connect(car.frequency);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(1, t0 + dur * 0.2);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    car.connect(g).connect(dest);
+    car.start(t0);
+    mod.start(t0);
+    car.stop(t0 + dur + 0.02);
+    mod.stop(t0 + dur + 0.02);
   }
 }
 

@@ -290,7 +290,7 @@ export class WeaponSystem {
     if (g.mag >= TUNING.weapons[kind].magazine || g.reserve <= 0) return;
     this.reloadTotal = TUNING.weapons[kind].reloadTime;
     this.reloading = this.reloadTotal;
-    audio.play('reload', { rate: 2.0 / this.reloadTotal });
+    audio.play(kind === 'pistol' ? 'reloadPistol' : 'reload', { volume: 0.8 });
   }
 
   private finishReload(): void {
@@ -330,12 +330,13 @@ export class WeaponSystem {
 
     const fx = this.d.fx;
     fx.muzzleFlash(muzzle, dir, kind === 'rifle' ? 1 : 0.45);
+    fx.gunSmoke(muzzle, dir, kind === 'rifle' ? 2 : 1);
     if (kind === 'rifle') {
       const right = new THREE.Vector3(Math.cos(hero.facingYaw), 0, -Math.sin(hero.facingYaw));
       fx.shell(mount.localToWorld(RIFLE_EJECT.clone()), right);
     }
     this.d.rig.addRecoil(def.recoilPitch, (Math.random() - 0.5) * 2 * def.recoilYaw);
-    audio.play(kind === 'rifle' ? 'rifle' : 'pistol', { volume: kind === 'rifle' ? 0.9 : 0.7 });
+    audio.play(kind === 'rifle' ? 'rifle' : 'pistol', { volume: kind === 'rifle' ? 0.85 : 0.6 });
     const loud = kind === 'rifle';
     this.d.noise.emit(hero.position, TUNING.noise[def.noise], kind, true, loud);
 
@@ -356,12 +357,22 @@ export class WeaponSystem {
       this.stats.hits++;
       if (head) this.stats.headshots++;
       this.d.onHitMarker(killed ? 'kill' : head ? 'head' : 'body');
-      audio.play(killed ? 'eliminate' : head ? 'headshot' : 'hit', { volume: 0.6 });
+      // Impact on the target (positional), plus a subtle confirmation tick for headshots.
+      audio.play('hit', { pos: th.point, volume: killed ? 0.9 : 0.6, maxDist: 70 });
+      if (head) audio.play('headshot', { volume: 0.25 });
     } else if (wh) {
       end = wh.point;
       const surface = wh.collider ? 0x8a6238 : PALETTE.dirt[0];
       fx.impact(wh.point, wh.normal, surface);
-      audio.play('bulletImpact', { pos: wh.point, volume: 0.5, maxDist: 30 });
+      const tag = wh.collider?.tag ?? '';
+      const wood = /tree|crate|tent|hut|tower|fence|cage|log/.test(tag) || (wh.collider && !tag);
+      const metal = /barrel|heli/.test(tag);
+      const stone = tag === 'rock';
+      audio.play(metal ? 'impactMetal' : stone ? 'rockHit' : wood ? 'impactWood' : 'bulletImpact', {
+        pos: wh.point,
+        volume: 0.55,
+        maxDist: 35,
+      });
       this.d.noise.emit(wh.point, TUNING.noise.bulletImpact, 'impact', true, false);
     } else {
       end = muzzle.clone().addScaledVector(dir, range);

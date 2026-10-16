@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { LevelDef } from '../levels/types';
 import { PALETTE, pickColor } from '../config/palette';
+import { terrainMaterial } from './materials';
 import { fbm, clamp, smoothstep, distToSegment } from './noise';
 
 const CHUNK = 32;
@@ -125,7 +126,7 @@ export class Terrain {
   }
 
   private buildMeshes(): void {
-    const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const mat = terrainMaterial();
     for (let cz = 0; cz < this.d; cz += CHUNK) {
       for (let cx = 0; cx < this.w; cx += CHUNK) {
         const geo = this.buildChunk(

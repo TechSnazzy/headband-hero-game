@@ -44,6 +44,7 @@ export function takedownFor(
       guard.eliminate(true);
       noise.emit(guard.position, TUNING.noise.takedown, 'takedown', true, false);
       audio.play('takedown', { volume: 0.8 });
+      audio.play('cloth', { volume: 0.7 });
       onDone(hero, guard);
     },
   };

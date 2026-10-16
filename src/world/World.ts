@@ -4,6 +4,7 @@ import { Terrain } from './Terrain';
 import { Physics } from './Physics';
 import { buildProp, GrassField, type BuiltProp } from './props';
 import { mulberry32, distToSegment } from './noise';
+import { worldUniforms } from './materials';
 
 /** Builds and owns everything static in a level: terrain, sky, lights, props, foliage. */
 export class World {
@@ -32,7 +33,7 @@ export class World {
     scene.fog = new THREE.Fog(m.fog, m.fogNear, m.fogFar);
     this.group.add(skyDome(m.skyTop, m.skyHorizon));
 
-    const hemi = new THREE.HemisphereLight(0xdff0ff, 0x4a6a2a, m.ambient);
+    const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x55683a, m.ambient);
     this.group.add(hemi);
     this.sun = new THREE.DirectionalLight(m.sun, m.sunIntensity);
     this.sun.position.set(30, 60, 20);
@@ -134,6 +135,7 @@ export class World {
 
   /** Keeps the shadow camera centered on the hero and animates fire and mist. */
   update(dt: number, focus: THREE.Vector3): void {
+    worldUniforms.uTime.value += dt;
     this.time += dt;
     this.sun.position.set(focus.x + 30, focus.y + 60, focus.z + 20);
     this.sun.target.position.copy(focus);

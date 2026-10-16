@@ -146,9 +146,9 @@ export const LEVEL_1: LevelDef = {
     fog: 0xbcd3d4,
     fogNear: 30,
     fogFar: 135,
-    sun: 0xfff1d6,
-    sunIntensity: 2.4,
-    ambient: 1.6,
+    sun: 0xffe6c0,
+    sunIntensity: 2.8,
+    ambient: 1.4,
     mist: true,
   },
   terrain: {

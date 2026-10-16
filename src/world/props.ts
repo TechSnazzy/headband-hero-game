@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { VoxelBuilder, voxelMaterial } from './voxel';
+import { VoxelBuilder } from './voxel';
+import { worldMaterial, patchGrassWind } from './materials';
 import { PALETTE } from '../config/palette';
 import type { Physics } from './Physics';
 import type { PropDef } from '../levels/types';
@@ -21,7 +22,7 @@ function cached(key: string, build: () => VoxelBuilder): THREE.BufferGeometry {
 }
 
 function meshOf(g: THREE.BufferGeometry, cast = true): THREE.Mesh {
-  const m = new THREE.Mesh(g, voxelMaterial());
+  const m = new THREE.Mesh(g, worldMaterial());
   m.castShadow = cast;
   m.receiveShadow = true;
   return m;
@@ -147,7 +148,9 @@ export class GrassField {
   constructor(max: number) {
     const g = new THREE.BoxGeometry(0.16, 1, 0.16);
     g.translate(0, 0.5, 0);
-    this.mesh = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial(), max);
+    const mat = new THREE.MeshLambertMaterial();
+    patchGrassWind(mat);
+    this.mesh = new THREE.InstancedMesh(g, mat, max);
     this.mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
     this.mesh.castShadow = false;
     this.mesh.receiveShadow = true;
@@ -402,7 +405,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
     }
     case 'barrel': {
       root.add(meshOf(barrelGeo()));
-      physics.addBox(def.x, y, def.z, 0.8 * sc, 1.2 * sc, 0.8 * sc);
+      physics.addBox(def.x, y, def.z, 0.8 * sc, 1.2 * sc, 0.8 * sc, { tag: 'barrel' });
       break;
     }
     case 'sandbags': {
@@ -420,7 +423,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
       }
       v.box(0, 0.45, 0, 0.12, 0.2, len, PALETTE.plank[0]);
       v.box(0, 1.05, 0, 0.12, 0.2, len, PALETTE.plank[1]);
-      root.add(v.mesh());
+      root.add(v.mesh(worldMaterial()));
       const [w, d] = fp(0.3, len);
       physics.addBox(def.x, y, def.z, w, 1.3, d, { blocksRays: false });
       break;
@@ -462,7 +465,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
         v.box(0, 0.3 + i * 0.5, 1.45, 0.8, 0.08, 0.08, PALETTE.plankDark[0]);
       v.box(-0.4, H / 2, 1.45, 0.08, H, 0.08, PALETTE.plankDark[1]);
       v.box(0.4, H / 2, 1.45, 0.08, H, 0.08, PALETTE.plankDark[1]);
-      root.add(v.mesh());
+      root.add(v.mesh(worldMaterial()));
       // Platform rails block shots at the sniper's legs.
       physics.addBox(def.x, y + H, def.z, 3.2, 0.95, 3.2, {
         solid: false,
@@ -485,7 +488,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
         v.box(W / 2, H / 2, t, 0.12, H, 0.12, PALETTE.trunk[(i + 2) % 3]);
       }
       v.box(0, H * 0.55, W / 2, W, 0.12, 0.12, PALETTE.plankDark[0]);
-      root.add(v.mesh());
+      root.add(v.mesh(worldMaterial()));
       // Door on the front (-Z), hinged at its left edge.
       const door = new THREE.Group();
       door.position.set(-W / 2, 0, -W / 2);
@@ -494,7 +497,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
         dv.box((i / 6) * W, H / 2, 0, 0.12, H, 0.12, PALETTE.trunk[i % 3]);
       dv.box(W / 2, H * 0.55, 0, W, 0.12, 0.12, PALETTE.plankDark[1]);
       dv.box(W * 0.85, H * 0.5, -0.08, 0.16, 0.24, 0.1, 0x3a3a3a); // padlock
-      door.add(dv.mesh());
+      door.add(dv.mesh(worldMaterial()));
       root.add(door);
       out.door = door;
       // Four wall colliders so bullets/guards can't pass but it reads as a cage.
@@ -517,7 +520,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
       const v = new VoxelBuilder(seed);
       v.box(0, 0.9, 0, 0.14, 1.8, 0.14, PALETTE.trunk[0]);
       v.box(0, 1.85, 0, 0.26, 0.16, 0.26, PALETTE.plankDark[0]);
-      root.add(v.mesh());
+      root.add(v.mesh(worldMaterial()));
       const flame = flameMesh(0.35);
       flame.position.y = 2.1;
       root.add(flame);
@@ -533,7 +536,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
       }
       v.box(0, 0.15, 0, 1.0, 0.16, 0.2, PALETTE.trunk[0]);
       v.box(0, 0.2, 0, 0.2, 0.16, 1.0, PALETTE.trunk[1]);
-      root.add(v.mesh());
+      root.add(v.mesh(worldMaterial()));
       const flame = flameMesh(0.7);
       flame.position.y = 0.45;
       root.add(flame);
@@ -554,7 +557,7 @@ export function buildProp(def: PropDef, ctx: PropContext): BuiltProp {
       // Plain abstract emblem (not a real-world flag or insignia).
       v.box(0, 2.2, -0.04, 0.4, 0.4, 0.02, 0x1e1e1e);
       v.box(0, 2.2, -0.05, 0.2, 0.2, 0.02, PALETTE.bannerRed);
-      root.add(v.mesh());
+      root.add(v.mesh(worldMaterial()));
       physics.addBox(def.x, y, def.z, 0.2, 3, 0.2, { blocksRays: false });
       break;
     }

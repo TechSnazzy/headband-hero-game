@@ -54,6 +54,7 @@ export class Menus {
         <label>Music <input type="range" min="0" max="1" step="0.05" data-set="music" /></label>
         <label class="check"><input type="checkbox" data-set="invertY" /> Invert mouse Y</label>
         <label class="check"><input type="checkbox" data-set="aimAssist" /> Aim assist</label>
+        <label class="check"><input type="checkbox" data-set="highGraphics" /> High quality graphics (ambient occlusion, bloom)</label>
       </div>`;
     r.innerHTML = `
       <section class="screen title" data-screen="title">

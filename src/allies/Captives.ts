@@ -81,7 +81,8 @@ export class Captives {
         Math.abs((col.minZ + col.maxZ) / 2 - c.ally.def.z) < 2,
     );
     for (const d of door) this.physics.remove(d);
-    audio.play('freed', { volume: 0.7 });
+    audio.play('cage', { volume: 0.8 });
+    audio.play('freed', { volume: 0.35 });
     this.onFreed?.(c.ally);
   }
 

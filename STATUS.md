@@ -18,7 +18,8 @@ Last updated: 2026-10-16
 
 ## Known gaps / ideas for next session
 
-- Audio is procedural WebAudio. Higgsfield's SFX/music models are restricted to its own game-builder pipeline, so real samples would need another source; drop files in `public/audio/` and register them with `registerSamples` in `src/audio/Audio.ts`.
+- Audio: gunfire/foley are CC0 recordings in `public/audio` (see ASSETS.md). Helicopter, jungle bed, dog and music are still synthesized; recorded versions could be added to the `SAMPLE_FILES` table in `src/audio/Audio.ts`.
+- Graphics: post-processing (GTAO, bloom, grade) in `src/fx/PostFX.ts`; world texel/edge shader and grass wind in `src/world/materials.ts`. Settings toggle `highGraphics`; auto-falls back below ~35 fps.
 - Draw calls are around 600 (each tree is its own mesh for camera fading). Instancing trees would help low-end machines.
 - Guards navigate with direct steering plus a sidestep when stuck; no navmesh. Fine for Level 1's open camp lanes.
 - Only the chase camera ships. Add modes by implementing `CameraMode` (`src/camera/CameraMode.ts`) and registering them in `Game.loadLevel`; F9 cycles.

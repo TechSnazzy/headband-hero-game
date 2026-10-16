@@ -9,6 +9,7 @@ import type { LevelDef } from '../levels/types';
 import { LEVEL_1 } from '../levels/level1';
 import { Intro } from './Intro';
 import { Effects } from '../fx/Effects';
+import { PostFX } from '../fx/PostFX';
 import { NoiseBus } from '../ai/Noise';
 import { WeaponSystem } from '../weapons/WeaponSystem';
 import type { Targetable } from './combat';
@@ -17,7 +18,7 @@ import { Menus } from '../ui/Menus';
 import { renderWeaponIcons } from '../ui/icons';
 import { audio } from '../audio/Audio';
 import { TUNING } from '../config/tuning';
-import { settings } from '../config/settings';
+import { settings, saveSettings } from '../config/settings';
 import { PALETTE } from '../config/palette';
 import { DEG } from '../world/noise';
 import { AlertSystem } from '../ai/AlertSystem';
@@ -53,6 +54,9 @@ export class Game {
   readonly scene = new THREE.Scene();
   readonly input: Input;
   readonly fx: Effects;
+  readonly post: PostFX;
+  /** Frame-time watchdog: drops to low graphics if the game runs slowly. */
+  private perf = { time: 0, frames: 0, checks: 0 };
   readonly noise = new NoiseBus();
   readonly hud: Hud;
   readonly menus: Menus;
@@ -114,6 +118,7 @@ export class Game {
     container.appendChild(this.renderer.domElement);
     this.input = new Input(this.renderer.domElement);
     this.fx = new Effects(this.scene);
+    this.post = new PostFX(this.renderer, this.scene);
     this.hud = new Hud(container, renderWeaponIcons(this.renderer));
     this.menus = new Menus(container, {
       play: () => this.play(),
@@ -167,6 +172,7 @@ export class Game {
     this.rig.register(new ChaseCamera());
     this.rig.register(this.cinematic);
     this.rig.setMode('chase');
+    this.post.setCamera(this.rig.camera);
     this.rig.onModeChange = (id) => {
       if (this.state === 'playing') this.hud.toast(`Camera: ${id}`, 1.2);
     };
@@ -335,7 +341,8 @@ export class Game {
         const r = this.weapons.addAmmo('rifle', C.ammoRifle);
         const s = this.weapons.addAmmo('pistol', C.ammoPistol);
         const k = this.weapons.addRocks(C.rocks);
-        audio.play('pickup');
+        audio.play('crate');
+        audio.play('pickup', { volume: 0.7 });
         this.hud.toast(`Crate: +${r} rifle  +${s} pistol  +${k} rocks`, 2.2);
         const lid = p.object.children[0];
         if (lid) lid.scale.y = 0.75;
@@ -456,6 +463,7 @@ export class Game {
   private applySettings(): void {
     audio.setVolume(settings.volume);
     audio.setMusicVolume(settings.music);
+    this.post.enabled = settings.highGraphics;
   }
 
   private checkpointLabel(id: string): string {
@@ -483,7 +491,7 @@ export class Game {
     if (this.hero.dead || this.state !== 'playing' || this.winT >= 0) return;
     this.hero.damage(amount);
     this.hud.damageFlash();
-    audio.play('hurt', { volume: 0.6 });
+    audio.play('hurt', { volume: 0.45 });
     if (this.hero.dead) {
       this.heroDownT = 0;
       this.hero.frozen = true;
@@ -545,6 +553,7 @@ export class Game {
   private resize(): void {
     this.renderer.setSize(innerWidth, innerHeight);
     this.rig.resize();
+    this.post.resize();
   }
 
   private frame(): void {
@@ -565,7 +574,7 @@ export class Game {
     ) {
       // Menus are up: keep the world alive behind the panels but freeze gameplay.
       if (this.state !== 'paused') this.world.update(dt, this.hero.position);
-      this.renderer.render(this.scene, this.rig.camera);
+      this.post.render(this.rig.camera);
       input.endFrame();
       return;
     }
@@ -596,14 +605,16 @@ export class Game {
     this.extraction.update(dt);
     this.fx.update(dt);
     audio.listener.copy(this.hero.position);
+    audio.listenerYaw = this.rig.yaw;
     audio.tick(dt);
-    this.renderer.render(this.scene, this.rig.camera);
+    this.post.render(this.rig.camera);
     input.endFrame();
   }
 
   private updatePlaying(dt: number): void {
     const input = this.input;
     const hero = this.hero;
+    this.watchPerformance(dt);
     this.stats.elapsed += dt;
 
     // Win cinematic: chopper lifts off, then the end screen.
@@ -684,6 +695,24 @@ export class Game {
     this.updateMission(dt);
     this.updateHud(dt);
     audio.setLoopVolume('music', this.alert.state === 'alerted' ? 0.9 : 0.45);
+  }
+
+  /** If high graphics can't hold ~35 fps, switch to low and say so. */
+  private watchPerformance(dt: number): void {
+    if (!settings.highGraphics || this.perf.checks > 6) return;
+    this.perf.time += dt;
+    this.perf.frames++;
+    if (this.perf.time < 4) return;
+    const fps = this.perf.frames / this.perf.time;
+    this.perf.time = 0;
+    this.perf.frames = 0;
+    this.perf.checks++;
+    if (fps < 35) {
+      settings.highGraphics = false;
+      saveSettings();
+      this.applySettings();
+      this.hud.toast('Switched to faster graphics (Settings to change)', 3);
+    }
   }
 
   private updateStats(): void {

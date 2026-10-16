@@ -9,6 +9,8 @@ export interface Settings {
   music: number; // 0..1
   aimAssist: boolean;
   showHints: boolean;
+  /** Ambient occlusion, bloom and color grading. Turned off automatically if the frame rate drops. */
+  highGraphics: boolean;
 }
 
 const KEY = 'headband-hero-settings';
@@ -20,6 +22,7 @@ const DEFAULTS: Settings = {
   music: 0.5,
   aimAssist: true,
   showHints: true,
+  highGraphics: true,
 };
 
 function load(): Settings {

@@ -234,6 +234,7 @@ export class Guard implements Targetable {
     } else end = from.clone().addScaledVector(dir, range);
     ctx.fx.tracer(from, end, PALETTE.tracerEnemy, this.type === 'sniper' ? 0.06 : 0.045);
     ctx.fx.muzzleFlash(from, dir, this.type === 'sniper' ? 1.2 : 0.9);
+    ctx.fx.gunSmoke(from, dir, 2);
     audio.play(this.type === 'sniper' ? 'sniper' : 'enemyRifle', { pos: from, maxDist: 90 });
     ctx.noise.emit(from, TUNING.noise.enemyFire, 'enemyFire', false, true);
   }

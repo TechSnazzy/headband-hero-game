@@ -57,4 +57,17 @@ Generated with Higgsfield `gpt_image_2_5` (images) and Higgsfield audio models, 
 
 ## Audio
 
-All sound effects and the music bed are synthesized at runtime with WebAudio (`src/audio/Audio.ts`). Higgsfield's sound-effect and music models are restricted to its own game-builder pipeline, so they were not used. The audio manager will automatically load real samples from `public/audio/<name>.mp3` if any are added later (register them with `registerSamples`).
+Recorded sound effects live in `public/audio/` (mono MP3, about 500 KB total). All sources are **CC0 / public domain** (no attribution required; credited here anyway). Clips were trimmed, faded and loudness-normalized with ffmpeg; several sounds have multiple variants picked at random at runtime.
+
+| Files | Source (CC0) | Processing | Used for |
+| --- | --- | --- | --- |
+| `rifle_1-4.mp3` | The Free Firearm Sound Library ([OpenGameArt](https://opengameart.org/content/the-free-firearm-sound-library)), AK-47 `C_28P` near-distance single shots | Trimmed to 0.95 s | Hero rifle |
+| `enemyRifle_1-4.mp3` | Same library, AK-47 `C_31P` and SKS `U_19P` mid-distance shots | Trimmed to 1.4 s (keeps the echo) | Enemy rifles |
+| `sniper_1-2.mp3` | Same library, Mosin Nagant `M_26P` | Trimmed to 1.9 s | Tower snipers |
+| `pistol_1-2.mp3` | Same library, Ruger Mark III .22 `R_35P` | High-pass 350 Hz, low-pass 2.4 kHz, compression (suppressed character) | Suppressed pistol |
+| `footstep_1-5.mp3` | Kenney [Impact Sounds](https://kenney.nl/assets/impact-sounds) `footstep_grass_*` | Normalized | Hero footsteps |
+| `impactDirt_*`, `impactWood_*`, `impactMetal_*`, `hit_*`, `takedown_*`, `rockHit_*`, `land_*` | Kenney Impact Sounds (`impactSoft_medium`, `impactWood_light`, `impactMetal_light`, `impactPunch_*`, `impactMining`, `impactSoft_heavy`) | Normalized | Bullet impacts by surface, hits, takedowns, rocks, landing |
+| `reload_1.mp3`, `reloadPistol_1.mp3` | Kenney [RPG Audio](https://kenney.nl/assets/rpg-audio) `metalLatch`, `metalClick`, `handleSmallLeather` | Layered into a mag-out / mag-in / charging-handle sequence | Reloads |
+| `empty_1`, `throw_1`, `jump_1`, `cloth_1`, `switch_1`, `pickup_1-2`, `crate_1`, `cage_1` | Kenney RPG Audio (`metalClick`, `cloth*`, `clothBelt`, `beltHandle2`, `handleSmallLeather`, `creak1`, `doorOpen_1`) | Normalized (dry-fire click pitched up) | Foley |
+
+Synthesized at runtime (`src/audio/Audio.ts`): helicopter loop (rotor blade slaps, turbine whine, rumble), jungle bed (cicadas, insects, wind) plus positioned bird calls, dog bark and grunts (formant synthesis), alert stingers and the adaptive music. All positional sounds get distance attenuation, a distance low-pass and an outdoor convolution reverb. Higgsfield's sound models are restricted to its own game-builder pipeline, so they were not used.

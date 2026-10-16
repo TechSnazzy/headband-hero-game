@@ -209,6 +209,27 @@ export class Effects {
     }
   }
 
+  /** Wisp of gun smoke drifting up from the muzzle. */
+  gunSmoke(pos: THREE.Vector3, dir: THREE.Vector3, amount = 2): void {
+    for (let i = 0; i < amount; i++) {
+      const v = dir
+        .clone()
+        .multiplyScalar(0.8 + Math.random())
+        .add(this.rv(0.4));
+      v.y += 0.35;
+      this.spawn({
+        pos: pos.clone().addScaledVector(dir, 0.1),
+        vel: v,
+        color: [0xb8b8b0, 0xa8a8a0, 0xc8c8c0][i % 3],
+        size: 0.12,
+        maxLife: 0.9 + Math.random() * 0.5,
+        gravity: -0.6,
+        drag: 2.2,
+        grow: 3.2,
+      });
+    }
+  }
+
   /** Ejected brass shell casing. */
   shell(pos: THREE.Vector3, right: THREE.Vector3): void {
     const v = right

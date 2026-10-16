@@ -25,7 +25,8 @@ Level 1 (Misty Ridge) is playable start to finish. See [PLAN.md](PLAN.md) for mi
 - Cartoon combat with no blood: hit sparks, voxel debris, and eliminated characters burst into a puff of cubes.
 - HUD: crosshair with dynamic spread, hit markers, ammo and reload ring, hotbar (icons rendered from the in-game voxel models), health with regen, alert meter, rescued portraits, objective text and a waypoint marker.
 - Checkpoints, title/pause/controls/settings screens, win screen with stats (and a GHOST rating if you are never spotted).
-- Procedural WebAudio sound effects and an adaptive music bed that kicks in when the camp is alerted.
+- Recorded gunfire (AK-47, SKS, Mosin Nagant, suppressed .22), footsteps, impacts and foley, with outdoor reverb, distance muffling and camera-relative panning; synthesized helicopter, jungle ambience and an adaptive music bed.
+- Graphics: ambient occlusion, bloom on fire and muzzle flashes, color grading, per-texel block texture, wind-blown grass and gun smoke (toggle in Settings; drops to fast mode automatically on slow machines).
 - Gamepad support (standard mapping).
 
 ## Controls
@@ -46,7 +47,7 @@ Level 1 (Misty Ridge) is playable start to finish. See [PLAN.md](PLAN.md) for mi
 
 Gamepad (standard mapping): left stick move, right stick look, RT fire, X reload, A hop, B crouch, LB/RB interact, Y next equipment, D-pad left/up/right for slots 1/2/3, left stick click sprint, Start pause.
 
-Settings (mouse sensitivity, invert Y, volume, music, aim assist) are in the title and pause menus and are saved in the browser. All gameplay tuning numbers live in [`src/config/tuning.ts`](src/config/tuning.ts).
+Settings (mouse sensitivity, invert Y, volume, music, aim assist, high quality graphics) are in the title and pause menus and are saved in the browser. All gameplay tuning numbers live in [`src/config/tuning.ts`](src/config/tuning.ts).
 
 ## Run locally
 
@@ -104,7 +105,7 @@ src/
 
 - Built with [Three.js](https://threejs.org/), [Vite](https://vitejs.dev/) and [TypeScript](https://www.typescriptlang.org/).
 - Concept art, title key art, logo and website thumbnail made with [Higgsfield](https://higgsfield.ai/) (GPT Image 2.5). See [ASSETS.md](ASSETS.md).
-- Sound effects and music are synthesized at runtime with the Web Audio API.
+- Recorded sound effects: [The Free Firearm Sound Library](https://opengameart.org/content/the-free-firearm-sound-library) and [Kenney](https://kenney.nl) Impact Sounds / RPG Audio, all CC0. Helicopter, ambience and music are synthesized with the Web Audio API. Details in ASSETS.md.
 - All 3D models are built procedurally from voxel boxes in code.
 - Code written with [Claude Code](https://claude.com/claude-code).
 
