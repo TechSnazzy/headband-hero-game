@@ -78,6 +78,14 @@ export class Game {
   private cinematic = new CinematicCamera();
   private interactPrompt: { text: string; progress: number } | null = null;
   private takedownT = 0;
+  /** Watchtower climb-and-takedown sequence in progress. */
+  private climb: {
+    t: number;
+    base: THREE.Vector3;
+    topY: number;
+    guard: Guard;
+    done: boolean;
+  } | null = null;
   private heroDownT = -1;
   private holdT = 0;
   private reinforcementsSent = 0;
@@ -196,6 +204,7 @@ export class Game {
     this.enemies = new EnemyManager(this.scene, this.aiCtx);
     this.enemies.spawnLevel(level);
     for (const g of this.enemies.guards) this.addTakedown(g);
+    for (const g of this.enemies.guards) if (g.elevated) this.addTowerTakedown(g);
     for (const p of this.world.props) if (p.def.type === 'ammoCrate') this.addCrate(p);
 
     this.captives = new Captives(level, this.scene, this.world.physics, this.world.grass);
@@ -218,11 +227,78 @@ export class Game {
     this.winT = -1;
     this.heroDownT = -1;
     this.takedownT = 0;
+    this.climb = null;
     this.reached.clear();
     this.stats = { start: 0, elapsed: 0, eliminations: 0, takedowns: 0, spotted: 0 };
     this.lastAlertState = 'calm';
     this.hud.setCaptives(level.captives.map((c) => c.kind));
     this.rebuildTargets();
+  }
+
+  /**
+   * Lookouts on watchtowers: hold E at the foot of the ladder to climb up, take the
+   * lookout out silently, and climb back down.
+   */
+  private addTowerTakedown(g: Guard): void {
+    const tower = this.world.props
+      .filter((p) => p.def.type === 'watchtower')
+      .sort(
+        (a, b) =>
+          a.object.position.distanceTo(g.position) - b.object.position.distanceTo(g.position),
+      )[0];
+    if (!tower) return;
+    const rot = tower.def.rot ?? 0;
+    const tp = tower.object.position;
+    const base = new THREE.Vector3(tp.x + 2.1 * Math.sin(rot), tp.y, tp.z + 2.1 * Math.cos(rot));
+    this.interactions.add({
+      priority: 3,
+      hold: TUNING.stealth.towerClimbHold,
+      range: 1.8,
+      position: (out) => out.copy(base),
+      available: () => g.alive && g.alertState !== 'alerted' && !this.climb,
+      prompt: () => 'Climb tower and take out lookout',
+      complete: (hero) => {
+        hero.frozen = true;
+        hero.crouching = false;
+        hero.position.copy(base);
+        hero.facingYaw = rot; // face the ladder
+        this.climb = { t: 0, base: base.clone(), topY: tp.y + 4.6, guard: g, done: false };
+      },
+    });
+  }
+
+  /** Climb up (0.9 s), silent takedown, climb back down. */
+  private updateClimb(dt: number): void {
+    const c = this.climb!;
+    const hero = this.hero;
+    c.t += dt;
+    const UP = 0.9;
+    const HOLD = 0.5;
+    const DOWN = 0.8;
+    let y: number;
+    if (c.t < UP) y = c.base.y + (c.topY - c.base.y) * (c.t / UP);
+    else if (c.t < UP + HOLD) y = c.topY;
+    else y = c.topY + (c.base.y - c.topY) * Math.min(1, (c.t - UP - HOLD) / DOWN);
+    hero.position.set(c.base.x, y, c.base.z);
+    hero.lean = c.t >= UP && c.t < UP + HOLD ? 0.35 : 0;
+    if (!c.done && c.t >= UP) {
+      c.done = true;
+      if (c.guard.alive) {
+        c.guard.eliminate(true);
+        this.noise.emit(c.guard.position, TUNING.noise.takedown, 'takedown', true, false);
+        audio.play('takedown', { volume: 0.8 });
+        this.stats.takedowns++;
+        this.hud.toast('Lookout taken out', 1.4);
+      }
+    }
+    hero.updateScripted(dt);
+    if (c.t >= UP + HOLD + DOWN) {
+      this.climb = null;
+      hero.frozen = false;
+      hero.lean = 0;
+      hero.grounded = true;
+      hero.velocity.set(0, 0, 0);
+    }
   }
 
   private addTakedown(g: Guard): void {
@@ -597,7 +673,8 @@ export class Game {
     if (!hero.dead)
       this.weapons.update(dt, fireInput, hero.crouching, hero.speed > 0.5, hero.sprinting);
     hero.aiming = this.weapons.aiming && !hero.dead;
-    hero.update(dt, intent, this.rig.yaw);
+    if (this.climb) this.updateClimb(dt);
+    else hero.update(dt, intent, this.rig.yaw);
     this.emitMovementNoise();
     this.enemies.update(dt);
     this.alert.update(dt, this.enemies.alertSources());

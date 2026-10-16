@@ -235,7 +235,7 @@ export class Guard implements Targetable {
     ctx.fx.tracer(from, end, PALETTE.tracerEnemy, this.type === 'sniper' ? 0.06 : 0.045);
     ctx.fx.muzzleFlash(from, dir, this.type === 'sniper' ? 1.2 : 0.9);
     audio.play(this.type === 'sniper' ? 'sniper' : 'enemyRifle', { pos: from, maxDist: 90 });
-    ctx.noise.emit(from, TUNING.noise.rifleShot * 0.8, 'enemyFire', false, true);
+    ctx.noise.emit(from, TUNING.noise.enemyFire, 'enemyFire', false, true);
   }
 
   // ------------------------------------------------------------ Targetable
@@ -279,6 +279,8 @@ export class Guard implements Targetable {
     if (!this.alive) return;
     // Weapon damage already includes its headshot multiplier.
     void part;
+    // Sneak attack: a suppressed shot on a guard who hasn't spotted you.
+    if (silent && this.brain.state !== 'alerted') damage *= TUNING.stealth.sneakDamageMultiplier;
     this.health -= damage;
     this.flinch = 0.25;
     if (this.health <= 0) {

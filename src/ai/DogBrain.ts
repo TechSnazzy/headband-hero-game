@@ -59,7 +59,10 @@ export class DogBrain {
         this.alarm(this.ctx.hero.position, false);
       return;
     }
-    if (e.alarming) {
+    if (
+      e.alarming &&
+      e.pos.distanceTo(this.d.position) < e.radius * TUNING.noise.rifleAlarmFraction
+    ) {
       this.alarm(e.pos, false);
       return;
     }
@@ -112,9 +115,8 @@ export class DogBrain {
       if (this.awareness >= 1) {
         this.alarm(this.ctx.hero.position, true);
         // Alert the handler and anyone nearby.
-        for (const g of this.ctx.squad())
-          if (g.alive && g.position.distanceTo(d.position) < 20)
-            g.alarm(this.ctx.hero.position, false);
+        // Only the handler is alarmed directly; the bark makes others come and look.
+        if (d.handler?.alive) d.handler.alarm(this.ctx.hero.position, false);
       } else if (this.awareness >= A.suspiciousThreshold && this.state === 'unaware')
         this.setState('suspicious');
     }

@@ -140,7 +140,7 @@ export class Dog implements Targetable {
 
   bark(): void {
     audio.play('bark', { pos: this.position, maxDist: 50 });
-    this.ctx.noise.emit(this.position, 22, 'alarm', false, this.brain.state === 'alerted');
+    this.ctx.noise.emit(this.position, TUNING.noise.dogBark, 'alarm', false, false);
   }
 
   getHitboxes(out: Hitbox[]): void {
@@ -176,9 +176,10 @@ export class Dog implements Targetable {
     _part: 'head' | 'body',
     _p: THREE.Vector3,
     _d: THREE.Vector3,
-    _silent: boolean,
+    silent: boolean,
   ): void {
     if (!this.alive) return;
+    if (silent && this.brain.state !== 'alerted') damage *= TUNING.stealth.sneakDamageMultiplier;
     this.health -= damage;
     this.flinch = 0.2;
     if (this.health <= 0) {

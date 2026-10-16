@@ -17,7 +17,8 @@ Level 1 (Misty Ridge) is playable start to finish. See [PLAN.md](PLAN.md) for mi
 - Helicopter insertion: the chopper flies in over a misty ridge and the hero fast-ropes to the landing zone.
 - Angled 3/4 chase camera with a slight over-the-shoulder offset, wall pull-in and fading trees. Built as a swappable `CameraMode` system (F9 cycles modes once more exist).
 - Stealth: guards with ground vision cones, `?`/`!` alert icons, a camp alert meter and hearing based on walking, sprinting, crouching, jumping and gunfire. Hide in tall grass and bushes; guard dogs can smell you there.
-- Silent takedowns from behind (hold E), thrown rocks to lure guards, a suppressed pistol (one-shot headshots), and a loud full-auto rifle that brings the whole camp down on you.
+- Silent takedowns from behind (hold E), climb a watchtower ladder (hold E) to take out the lookout, thrown rocks to lure guards, and a suppressed pistol that drops any guard or dog who hasn't spotted you in one shot. The full-auto rifle is loud: nearby guards go on alert and others come to investigate.
+- Aim above the horizon: keep moving the mouse up and the camera drops to shoulder height so the crosshair can reach watchtowers and distant targets.
 - Enemies: grunts, tower snipers (with a laser that telegraphs the shot), a dog handler and his guard dog. Alerted guards call for help, flank, chase and search before cooling down.
 - Rescue three captured soldiers from bamboo cages; they follow you (and sneak when you sneak). Allies can never be hurt: bullets pass through and the crosshair shows FRIENDLY.
 - Extraction: get everyone to the chopper, then hold out against reinforcement waves while it warms up.
@@ -38,7 +39,7 @@ Level 1 (Misty Ridge) is playable start to finish. See [PLAN.md](PLAN.md) for mi
 | Shift | Sprint (fast, noisy) |
 | C or Ctrl | Crouch / sneak (slow, quiet, hide in tall grass and bushes) |
 | Space | Hop (noisy) |
-| E (hold) | Interact: free captives, open crates, pick up items, silent takedown from behind |
+| E (hold) | Interact: free captives, open crates, silent takedown from behind, climb a watchtower ladder to take out the lookout |
 | 1, 2, 3 or mouse wheel | Switch equipment: rifle, suppressed pistol, rocks |
 | Esc | Pause menu |
 | F9 | Debug: cycle camera modes (once more than one exists) |

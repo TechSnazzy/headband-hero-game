@@ -35,6 +35,11 @@ export const TUNING = {
     defaultPitchDeg: 38,
     minPitchDeg: 18,
     maxPitchDeg: 62,
+    // Past the bottom of the orbit, moving the mouse up keeps tilting the view above
+    // the horizon (for watchtowers and distant targets) while the camera drops to
+    // shoulder height so the hero stays in frame.
+    maxLookUpDeg: 18, // highest the crosshair can aim above the horizon
+    lowOrbitDeg: 1, // orbit angle when fully looking up
     sensitivity: 0.0022, // radians per mouse pixel
     followLerp: 14,
     collisionPadding: 0.35,
@@ -50,8 +55,11 @@ export const TUNING = {
     sprint: 15,
     crouch: 1.2,
     jumpLand: 9,
-    rifleShot: 55,
-    pistolShot: 9,
+    rifleShot: 32,
+    rifleAlarmFraction: 0.5, // guards inside this fraction of the rifle radius go straight to alerted; farther ones investigate
+    enemyFire: 18, // radius in which guards hear a teammate shooting and join in
+    dogBark: 12, // guards hearing a bark come to investigate (only the handler is alarmed)
+    pistolShot: 4,
     rockImpact: 13,
     takedown: 2.5,
     bulletImpact: 7,
@@ -67,6 +75,10 @@ export const TUNING = {
     takedownAngleDeg: 70, // must be within this cone behind the guard
     takedownHold: 0.6,
     takedownCooldown: 1.2,
+    // Suppressed-pistol shots on a guard who has not spotted you do this much extra damage,
+    // so one shot drops an unaware grunt, sniper or dog (one target at a time).
+    sneakDamageMultiplier: 2.5,
+    towerClimbHold: 1.0, // hold E at a watchtower ladder to climb up and take out the lookout
   },
 
   ai: {
@@ -85,7 +97,7 @@ export const TUNING = {
     investigateTime: 6,
     searchTime: 10,
     loseSightTime: 3.5,
-    callForHelpRadius: 30,
+    callForHelpRadius: 16,
     patrolSpeed: 1.7,
     investigateSpeed: 2.6,
     chaseSpeed: 4.6,
@@ -93,7 +105,7 @@ export const TUNING = {
     preferredRange: 14,
     turnSpeed: 5,
     dogSpeed: 6.5,
-    dogSmellRange: 5.5,
+    dogSmellRange: 3.5,
     dogBiteDamage: 12,
     dogBiteInterval: 0.9,
     reinforcementInterval: 6,
@@ -128,7 +140,7 @@ export const TUNING = {
       spreadDeg: 6.5,
       range: 28,
     },
-    dog: { health: 60 },
+    dog: { health: 40 },
     dropAmmoChance: 0.85,
     dropAmmoAmount: [10, 22] as [number, number],
     dropMedkitChance: 0.15,

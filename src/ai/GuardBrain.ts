@@ -132,12 +132,17 @@ export class GuardBrain {
     const d = e.pos.distanceTo(g.position);
     if (d > e.radius) return;
     if (!e.fromHero) {
-      // A teammate opened fire: join the fight.
-      if (e.alarming && this.state !== 'alerted') this.alarm(this.ctx.hero.position, false);
+      if (this.state === 'alerted') return;
+      // A dog barking: come and see what it found.
+      if (e.kind === 'alarm') this.investigate(e.pos);
+      // A nearby teammate opened fire: join the fight.
+      else if (e.alarming) this.alarm(this.ctx.hero.position, false);
       return;
     }
     if (e.alarming) {
-      this.alarm(e.pos, d < e.radius * 0.4);
+      // Loud gunfire: close guards go on alert, distant ones come to investigate.
+      if (d < e.radius * TUNING.noise.rifleAlarmFraction) this.alarm(e.pos, d < e.radius * 0.25);
+      else this.investigate(e.pos);
       return;
     }
     if (this.state === 'alerted') {
@@ -173,7 +178,8 @@ export class GuardBrain {
     this.alarm(this.ctx.hero.position, false);
     // Turn toward the shooter right away.
     this.reaction = 0.3;
-    if (!wasAlerted) this.callForHelp(silent ? 10 : A.callForHelpRadius);
+    // A suppressed hit goes unnoticed by the rest of the camp.
+    if (!wasAlerted && !silent) this.callForHelp(A.callForHelpRadius);
   }
 
   onEliminated(silent: boolean): void {

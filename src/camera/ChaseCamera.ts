@@ -9,7 +9,8 @@ const C = TUNING.camera;
 
 /**
  * Angled 3/4 chase camera (Zelda / Diablo style) with a slight over-the-shoulder
- * offset. Mouse X orbits, mouse Y tilts within a limited range. The view looks a
+ * offset. Mouse X orbits, mouse Y tilts within a limited range (and, at the low end,
+ * keeps tilting the view up so you can aim at towers and far targets). The view looks a
  * little shallower than its orbit angle so the crosshair reaches ahead of the
  * hero while the hero's full body stays in the lower part of the frame.
  */
@@ -17,6 +18,11 @@ export class ChaseCamera implements CameraMode {
   readonly id = 'chase';
   readonly selectable = true;
   yaw = 0;
+  /**
+   * Virtual pitch driven by the mouse. Above minPitchDeg it is the orbit angle;
+   * below it, the orbit flattens toward lowOrbitDeg and the view keeps tilting up.
+   */
+  private pitch = C.defaultPitchDeg * DEG;
   private orbit = C.defaultPitchDeg * DEG;
   private pivot = new THREE.Vector3();
   private dist: number = C.distance;
@@ -29,7 +35,7 @@ export class ChaseCamera implements CameraMode {
   enter(ctx: CameraContext, from?: { yaw: number; pitch: number }): void {
     if (from) {
       this.yaw = from.yaw;
-      this.orbit = clamp(from.pitch, C.minPitchDeg * DEG, C.maxPitchDeg * DEG);
+      this.pitch = clamp(from.pitch, C.minPitchDeg * DEG, C.maxPitchDeg * DEG);
     }
     this.snap(ctx);
   }
@@ -43,7 +49,21 @@ export class ChaseCamera implements CameraMode {
     const sens = C.sensitivity * settings.sensitivity;
     this.yaw -= dx * sens;
     const dyS = settings.invertY ? -dy : dy;
-    this.orbit = clamp(this.orbit + dyS * sens, C.minPitchDeg * DEG, C.maxPitchDeg * DEG);
+    this.pitch = clamp(this.pitch + dyS * sens, this.minPitch, C.maxPitchDeg * DEG);
+  }
+
+  /** Lowest virtual pitch: the crosshair is then maxLookUpDeg above the horizon. */
+  private get minPitch(): number {
+    return (C.aimTiltDeg - C.maxLookUpDeg) * DEG;
+  }
+
+  private updateOrbit(): void {
+    const min = C.minPitchDeg * DEG;
+    if (this.pitch >= min) this.orbit = this.pitch;
+    else {
+      const t = (min - this.pitch) / (min - this.minPitch);
+      this.orbit = min + (C.lowOrbitDeg * DEG - min) * t;
+    }
   }
 
   addRecoil(pitch: number, yaw: number): void {
@@ -52,7 +72,7 @@ export class ChaseCamera implements CameraMode {
   }
 
   state(): { yaw: number; pitch: number } {
-    return { yaw: this.yaw, pitch: this.orbit };
+    return { yaw: this.yaw, pitch: this.pitch };
   }
 
   snap(ctx: CameraContext): void {
@@ -82,6 +102,7 @@ export class ChaseCamera implements CameraMode {
 
   private place(ctx: CameraContext, distLerp: number): void {
     const cam = ctx.camera;
+    this.updateOrbit();
     const yaw = this.yaw + this.recoilYaw;
     // Direction from pivot back toward the camera.
     const back = this.tmpDir.set(
@@ -98,11 +119,14 @@ export class ChaseCamera implements CameraMode {
     this.dist += (want - this.dist) * (want < this.dist ? 1 : distLerp);
 
     cam.position.copy(this.pivot).addScaledVector(back, this.dist);
-    // Never dip under the terrain.
-    const ground = ctx.physics.terrain.heightAt(cam.position.x, cam.position.z) + 0.4;
+    // Never dip under the terrain (or below shoulder height when looking up).
+    const ground = Math.max(
+      ctx.physics.terrain.heightAt(cam.position.x, cam.position.z) + 0.4,
+      ctx.target.position.y + 1.3,
+    );
     if (cam.position.y < ground) cam.position.y = ground;
 
-    const lookPitch = this.orbit - C.aimTiltDeg * DEG - this.recoilPitch;
+    const lookPitch = this.pitch - C.aimTiltDeg * DEG - this.recoilPitch;
     const fwd = new THREE.Vector3(
       -Math.sin(yaw) * Math.cos(lookPitch),
       -Math.sin(lookPitch),
