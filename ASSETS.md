@@ -63,7 +63,7 @@ Recorded sound effects live in `public/audio/` (mono MP3, about 500 KB total). A
 | --- | --- | --- | --- |
 | `rifle_1-2.mp3` | The Free Firearm Sound Library ([OpenGameArt](https://opengameart.org/content/the-free-firearm-sound-library)), AR-15 `D_32P` near-distance single shots | Trimmed to 0.95 s | Hero rifle |
 | `enemyRifle_1-2.mp3` | Same library, AR-15 `D_24P` mid-distance shots | Trimmed to 1.4 s (keeps the echo) | Enemy rifles and tower snipers |
-| `pistol_1-2.mp3` | Same library, Ruger Mark III .22 `R_35P` | High-pass 350 Hz, low-pass 2.4 kHz, compression (suppressed character) | Suppressed pistol |
+| `pistol_1-3.mp3` | Same library, Walther PPQ 9mm `X_39P` near-distance shots | High-pass 180 Hz, low-pass 3.5 kHz, compression, 0.5 s (suppressed character) | Suppressed pistol |
 | `footstep_1-5.mp3` | Kenney [Impact Sounds](https://kenney.nl/assets/impact-sounds) `footstep_grass_*` | Normalized | Hero footsteps |
 | `impactDirt_*`, `impactWood_*`, `impactMetal_*`, `hit_*`, `takedown_*`, `rockHit_*`, `land_*` | Kenney Impact Sounds (`impactSoft_medium`, `impactWood_light`, `impactMetal_light`, `impactPunch_*`, `impactMining`, `impactSoft_heavy`) | Normalized | Bullet impacts by surface, hits, takedowns, rocks, landing |
 | `reload_1.mp3`, `reloadPistol_1.mp3` | Kenney [RPG Audio](https://kenney.nl/assets/rpg-audio) `metalLatch`, `metalClick`, `handleSmallLeather` | Layered into a mag-out / mag-in / charging-handle sequence | Reloads |

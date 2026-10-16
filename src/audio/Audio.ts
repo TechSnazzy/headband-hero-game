@@ -55,7 +55,7 @@ const SAMPLE_FILES: Partial<Record<SoundName | LoopName, string[]>> = {
   rifle: n('rifle', 2),
   enemyRifle: n('enemyRifle', 2),
   sniper: n('enemyRifle', 2), // same AR-15 recordings as the other guards
-  pistol: n('pistol', 2),
+  pistol: n('pistol', 3),
   reload: n('reload', 1),
   reloadPistol: n('reloadPistol', 1),
   empty: n('empty', 1),
