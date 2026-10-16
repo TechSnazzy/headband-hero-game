@@ -54,7 +54,7 @@ const n = (base: string, count: number): string[] =>
 const SAMPLE_FILES: Partial<Record<SoundName | LoopName, string[]>> = {
   rifle: n('rifle', 2),
   enemyRifle: n('enemyRifle', 2),
-  sniper: n('sniper', 2),
+  sniper: n('enemyRifle', 2), // same AR-15 recordings as the other guards
   pistol: n('pistol', 2),
   reload: n('reload', 1),
   reloadPistol: n('reloadPistol', 1),
