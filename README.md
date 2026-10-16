@@ -25,7 +25,7 @@ Level 1 (Misty Ridge) is playable start to finish. See [PLAN.md](PLAN.md) for mi
 - Cartoon combat with no blood: hit sparks, voxel debris, and eliminated characters burst into a puff of cubes.
 - HUD: crosshair with dynamic spread, hit markers, ammo and reload ring, hotbar (icons rendered from the in-game voxel models), health with regen, alert meter, rescued portraits, objective text and a waypoint marker.
 - Checkpoints, title/pause/controls/settings screens, win screen with stats (and a GHOST rating if you are never spotted).
-- Recorded gunfire (AK-47, SKS, Mosin Nagant, suppressed .22), footsteps, impacts and foley, with outdoor reverb, distance muffling and camera-relative panning; synthesized helicopter, jungle ambience and an adaptive music bed.
+- Recorded gunfire (AR-15 for the hero, AK-47 and SKS for enemies, Mosin Nagant, suppressed .22), footsteps, impacts and foley, with outdoor reverb, distance muffling and camera-relative panning; synthesized helicopter, jungle ambience and an adaptive music bed.
 - Graphics: ambient occlusion, bloom on fire and muzzle flashes, color grading, per-texel block texture, wind-blown grass and gun smoke (toggle in Settings; drops to fast mode automatically on slow machines).
 - Gamepad support (standard mapping).
 

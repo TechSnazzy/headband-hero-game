@@ -52,7 +52,7 @@ const n = (base: string, count: number): string[] =>
 
 /** Recorded variants in public/audio (kept in sync with ASSETS.md). */
 const SAMPLE_FILES: Partial<Record<SoundName | LoopName, string[]>> = {
-  rifle: n('rifle', 4),
+  rifle: n('rifle', 2),
   enemyRifle: n('enemyRifle', 4),
   sniper: n('sniper', 2),
   pistol: n('pistol', 2),
