@@ -62,7 +62,7 @@ Recorded sound effects live in `public/audio/` (mono MP3, about 500 KB total). A
 | Files | Source (CC0) | Processing | Used for |
 | --- | --- | --- | --- |
 | `rifle_1-2.mp3` | The Free Firearm Sound Library ([OpenGameArt](https://opengameart.org/content/the-free-firearm-sound-library)), AR-15 `D_32P` near-distance single shots | Trimmed to 0.95 s | Hero rifle |
-| `enemyRifle_1-4.mp3` | Same library, AK-47 `C_31P` and SKS `U_19P` mid-distance shots | Trimmed to 1.4 s (keeps the echo) | Enemy rifles |
+| `enemyRifle_1-2.mp3` | Same library, AR-15 `D_24P` mid-distance shots | Trimmed to 1.4 s (keeps the echo) | Enemy rifles |
 | `sniper_1-2.mp3` | Same library, Mosin Nagant `M_26P` | Trimmed to 1.9 s | Tower snipers |
 | `pistol_1-2.mp3` | Same library, Ruger Mark III .22 `R_35P` | High-pass 350 Hz, low-pass 2.4 kHz, compression (suppressed character) | Suppressed pistol |
 | `footstep_1-5.mp3` | Kenney [Impact Sounds](https://kenney.nl/assets/impact-sounds) `footstep_grass_*` | Normalized | Hero footsteps |
